@@ -4,15 +4,16 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B9A494B8-8BC3-4D13-959B-ACEE1342FE88}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <ProjectGuid>{80510902-7347-4E64-ACB3-E467B785AC11}</ProjectGuid>
+    <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SkillsTest.GZipTest.Core</RootNamespace>
-    <AssemblyName>SkillsTest.GZipTest.Core</AssemblyName>
+    <RootNamespace>SkillsTest.GZipTest.App</RootNamespace>
+    <AssemblyName>SkillsTest.GZipTest.App</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -22,6 +23,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -38,10 +40,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\MrZipper.cs" />
-    <Compile Include="Classes\PieceOfResult.cs" />
-    <Compile Include="Helpers\StringHelper.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SkillsTest.GZipTest.Core\SkillsTest.GZipTest.Core.csproj">
+      <Project>{b9a494b8-8bc3-4d13-959b-acee1342fe88}</Project>
+      <Name>SkillsTest.GZipTest.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
