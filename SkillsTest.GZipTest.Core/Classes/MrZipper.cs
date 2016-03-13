@@ -7,67 +7,95 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
+    /// <summary>
+    /// Отвечает за сжатие и распаковку данных с помощью класса GZipStream
+    /// </summary>
     public class MrZipper : IDisposable
     {
+        /// <summary>
+        /// Значение-костыль, являющееся по совместитульству магическим числом для gz формата
+        /// </summary>
+        private static readonly byte[] gZipMagicheader = { 31, 139, 08 };
+
+        /// <summary>
+        /// Максимальное кол-во потоков обработки
+        /// </summary>
+        private static int maxThreads;
+
+        
+        static MrZipper()
+        {
+            //TODO : Надо бы определять значение в зависимости от кол-ва процессоров
+            MrZipper.maxThreads = 5;
+        }
+        /// <summary>
+        /// Размер фрагмента файла-источника для операции сжатия
+        /// </summary>
         private static long compressFragmentSize = 512000;
-
-        private static int maxThreads = 5;
-
-        private long currentIndex { get; set; }
+        /// <summary>
+        /// Заглушка для синхронизации доступа к value членам
+        /// </summary>
         private readonly object _indexDummy = new object();
-        private long inputFileLength;
-
+        /// <summary>
+        /// Путь к файлу-источнику. Значение присваивается в методе <see cref="Refresh"/>
+        /// </summary>
         private string inputFilePath { get; set; }
+        /// <summary>
+        /// Путь к файлу-результату. Значение присваивается в методе <see cref="Refresh"/>
+        /// </summary>
         private string outputFilePath { get; set; }
+        /// <summary>
+        /// Папка файла-результата.
+        /// </summary>
         private string outputFileFolder { get { return Path.GetDirectoryName(this.outputFilePath); } }
-
+        /// <summary>
+        /// Коллекция с наметками фрагментов исходного файла. Заполняется в методе <see cref="Refresh"/>
+        /// </summary>
+        private List<PieceOfSource> SourceList = new List<PieceOfSource>();
+        /// <summary>
+        /// Коллекция с результами работы экземпляра. Очищается в методе <see cref="Refresh"/>, а заполняется по мере работы методов сжатия и распаковки
+        /// </summary>
         private List<PieceOfResult> ResultList = new List<PieceOfResult>();
+        /// <summary>
+        /// Режим работы в данный момент. Заполняется в методе <see cref="Refresh"/>
+        /// </summary>
         private CompressionMode mode;
+        /// <summary>
+        /// Поток с исходным файлом. Заполняется в методе <see cref="Refresh"/>
+        /// </summary>
+        /// <remarks>Поток остается открыт на протяжении работы операций сжатия и распаковки. Это необходимо для защиты модификации файла-источника во время работы методов.</remarks>
         private FileStream inputFile;
 
 
-        private PieceOfResult Fetch()
+        /// <summary>
+        /// Служит для получения наметки очередного необработанного фрагмента файла-источника.
+        /// Полученная наметка будет удалена из коллекции <see cref="SourceList"/>
+        /// </summary>
+        /// <returns>Наметка фрагмента файла-источника или null если все обработаны</returns>
+        private PieceOfSource? Fetch()
         {
-            long? localCurrentIndex = null;
-            long? localNextIndex = null;
+            PieceOfSource? result = null;
 
-            PieceOfResult result = null;
-
-            lock (this._indexDummy)
+            lock (this.SourceList)
             {
-                if (!(currentIndex >= inputFileLength))
+                int lastIndex = this.SourceList.Count - 1;
+
+                if (lastIndex >= 0)
                 {
-                    localCurrentIndex = currentIndex;
-
-                    if (this.mode == CompressionMode.Compress)
-                    {
-                        localNextIndex = localCurrentIndex + compressFragmentSize;
-                    }
-                    else
-                    {
-                    //TODO: Надо бы для процесса распаковки определять динамически размеры блоков
-                        throw new NotImplementedException();
-                    }
-
-                    if (localNextIndex > inputFileLength)
-                    {
-                        localNextIndex = inputFileLength;
-                    }
-
-                    currentIndex = (long)localNextIndex;
+                    result = this.SourceList[lastIndex];
+                    this.SourceList.RemoveAt(lastIndex);
                 }
-            }
-
-            if (localCurrentIndex != null && localNextIndex != null)
-            {
-                result = new PieceOfResult(this.inputFilePath, (long) localCurrentIndex,
-                    Convert.ToInt64(localNextIndex - localCurrentIndex), this.outputFileFolder);
             }
 
             return result;
         }
 
-
+        /// <summary>
+        /// Сбрасывает на дефолтное внутреннее состояние экземпляра.
+        /// </summary>
+        /// <param name="inputFilePath">Путь к файлу-источнику</param>
+        /// <param name="outputFilePath">Путь к файлу-результату</param>
+        /// <param name="mode">Режим работы</param>
         private void Refresh(string inputFilePath, string outputFilePath, CompressionMode mode)
         {
             lock (this._indexDummy)
@@ -81,31 +109,158 @@ namespace SkillsTest.GZipTest.Core
                     this.ResultList.Clear();
                 }
 
-                this.inputFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                this.inputFileLength = inputFile.Length;
-                this.inputFile.Flush();
+                lock (this.SourceList)
+                {
+                    this.SourceList.Clear();
+                }
 
-                this.currentIndex = 0;
+                this.inputFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                
+
+                //Делаем раскройку входящего файла, чтобы далее не приходилось лочить ресурсы для поиска границ кусочков
+                long currentIndex = 0;
+                long nextIndex = 0;
+                long inputFileLength = inputFile.Length;
+                while (currentIndex < inputFileLength)
+                {
+                    switch (mode)
+                    {
+                        case CompressionMode.Compress:
+                            //Для сжатия все просто
+                            //Отщипываем по кусочку фиксированной длины
+                            //Отличаться от прочих может лишь последний кусочек
+                            nextIndex = currentIndex + compressFragmentSize;
+                            if (nextIndex > inputFileLength)
+                            {
+                                nextIndex = inputFileLength;
+                            }
+                            break;
+                        case CompressionMode.Decompress:
+                            //С распаковкой сложнее
+                            nextIndex = this.IndexOfNextCompressedPart((currentIndex == 0 ? (long?)gZipMagicheader.Length : null)) ??
+                                        inputFileLength;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException("mode");
+                    }                    
+
+                    this.SourceList.Add(new PieceOfSource(currentIndex, nextIndex - currentIndex));
+
+                    currentIndex = nextIndex;
+                }
+
+
+                this.inputFile.Flush();
             }
         }
 
+
+        /// <summary>
+        /// Поиск начала следующего фрагмента данных в архиве. Метод не детерминированный, т.к. зависит и меняет состояние <see cref="inputFile"/>
+        /// </summary>
+        /// <param name="setStreamPosition">Позиция в <see cref="inputFile"/>, с которой метод начнет читать данные</param>
+        /// <returns>Позиция начала фрагмента данных в архиве</returns>
+        private long? IndexOfNextCompressedPart(long? setStreamPosition = null)
+        {
+            long? result = null;
+
+            try
+            {
+                if (setStreamPosition != null)
+                {
+                    this.inputFile.Position = (long) setStreamPosition;
+                }
+                else
+                {
+                    setStreamPosition = this.inputFile.Position;
+                }
+
+                int currentByte;
+                int matchesCount = 0;
+                while ((currentByte = this.inputFile.ReadByte()) != -1)
+                {
+                    if (Convert.ToByte(currentByte) == gZipMagicheader[matchesCount])
+                    {
+                        matchesCount++;
+                    }
+                    else
+                    {
+                        matchesCount = 0;
+                    }
+
+                    if (matchesCount == gZipMagicheader.Length)
+                    {
+                        result = this.inputFile.Position - gZipMagicheader.Length;
+                        break;
+                    }
+                }
+
+                //На случай достижения окончания файла
+                if (matchesCount == 0 && this.inputFile.Position >= this.inputFile.Length)
+                {
+                    result = this.inputFile.Length;
+                }
+            }
+            catch (Exception exception)
+            {
+                throw new Exception(
+                    string.Format("Поиск начала следующего кусочка данных для распаковки. Начиная с позиции {0}",
+                        setStreamPosition), exception);
+            }
+            finally
+            {
+                if (this.inputFile != null)
+                {
+                    this.inputFile.Flush();
+                }
+            }
+
+            return result;
+        }
+
+
+        /// <param name="inputFilePath">Путь к файлу-источнику</param>
+        /// <param name="outputFilePath">Путь к файлу-результату</param>
         public void Compress(string inputFilePath, string outputFilePath)
         {
             this.Refresh(inputFilePath, outputFilePath, CompressionMode.Compress);
 
-            var newPiece = this.Fetch();
-            while (newPiece != null)
+            PieceOfSource? newPiece;
+            while ((newPiece = this.Fetch()) != null)
             {
-                newPiece.Compress();
+                var pieceOfResult = new PieceOfResult(this.inputFilePath, (PieceOfSource)newPiece, this.outputFileFolder);
 
-                this.ResultList.Add(newPiece);
+                pieceOfResult.Compress();
 
-                newPiece = this.Fetch();
+                this.ResultList.Add(pieceOfResult);
             }
 
             this.WriteResult();
         }
 
+
+        /// <param name="inputFilePath">Путь к файлу-источнику</param>
+        /// <param name="outputFilePath">Путь к файлу-результату</param>
+        public void Decompress(string inputFilePath, string outputFilePath)
+        {
+            this.Refresh(inputFilePath, outputFilePath, CompressionMode.Decompress);
+
+            PieceOfSource? newPiece;
+            while ((newPiece = this.Fetch()) != null)
+            {
+                var pieceOfResult = new PieceOfResult(this.inputFilePath, (PieceOfSource)newPiece, this.outputFileFolder);
+
+                pieceOfResult.Decompress();
+
+                this.ResultList.Add(pieceOfResult);
+            }
+
+            this.WriteResult();
+        }
+
+        /// <summary>
+        /// Собирает все обработанные кусочки данных в единый файл-результат
+        /// </summary>
         private void WriteResult()
         {
             FileStream targetFile = null;
@@ -114,7 +269,7 @@ namespace SkillsTest.GZipTest.Core
                 targetFile = new FileStream(this.outputFilePath, FileMode.Create, FileAccess.Write);
 
                 var pieces =
-                    this.ResultList;
+                    this.ResultList.OrderBy(x => x.StartIndex);
 
                 foreach (
                     var currentPiece in

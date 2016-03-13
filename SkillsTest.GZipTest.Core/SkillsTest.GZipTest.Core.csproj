@@ -40,8 +40,10 @@
   <ItemGroup>
     <Compile Include="Classes\MrZipper.cs" />
     <Compile Include="Classes\PieceOfResult.cs" />
+    <Compile Include="Helpers\StreamHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Structs\PieceOfSource.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

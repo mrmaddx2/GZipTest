@@ -12,10 +12,12 @@ namespace SkillsTest.GZipTest.App
         {
             string input = args[0];
             string output = args[1];
+            string secondOutput = args[2];
 
             MrZipper zipper = new MrZipper();
 
             zipper.Compress(input, output);
+            zipper.Decompress(output, secondOutput);
         }
     }
 }
