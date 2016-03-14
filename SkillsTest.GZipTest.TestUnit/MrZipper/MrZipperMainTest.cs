@@ -81,5 +81,13 @@ namespace SkillsTest.GZipTest.TestUnit
             //Грязный хак
             Assert.IsTrue(rawFile.SequenceEqual(decompressedFile));
         }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentException))]
+        public void TryDecompressNonArcFile()
+        {
+            this.subject.Decompress(TestContext.Properties["rawFilePath"].ToString(),
+                Path.Combine(TestContext.TestResultsDirectory, "someResult.xxx"));
+        }
     }
 }

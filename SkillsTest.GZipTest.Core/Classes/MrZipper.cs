@@ -272,7 +272,30 @@ namespace SkillsTest.GZipTest.Core
 
                 this.inputFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
                 this.outputFile = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
+
+                #region Валидация
+
+                switch (mode)
+                {
+                    case CompressionMode.Compress:
+                        if (compressFragmentSize == null)
+                        {
+                            throw new ArgumentException("Необходимо указать размер блока данных для операции сжатия", "compressFragmentSize");
+                        }
+                        break;
+                    case CompressionMode.Decompress:
+                        if (this.IndexOfNextCompressedPart(0) != 0)
+                        {
+                            throw new ArgumentException("Файл-источник не является архивом gzip!", "inputFilePath");
+                        }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("mode");
+                } 
+
+
                 
+                #endregion
 
                 //Делаем раскройку входящего файла, чтобы далее не приходилось лочить ресурсы для поиска границ кусочков
                 long currentIndex = 0;
@@ -286,11 +309,6 @@ namespace SkillsTest.GZipTest.Core
                             //Для сжатия все просто
                             //Отщипываем по кусочку фиксированной длины
                             //Отличаться от прочих может лишь последний кусочек
-                            if (compressFragmentSize == null)
-                            {
-                                throw new ArgumentException("Необходимо указать размер блока данных для операции сжатия", "compressFragmentSize");
-                            }
-
                             nextIndex = currentIndex + (long)compressFragmentSize;
                             if (nextIndex > inputFileLength)
                             {
