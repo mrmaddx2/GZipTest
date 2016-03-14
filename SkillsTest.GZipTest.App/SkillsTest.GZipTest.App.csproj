@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>SkillsTest.GZipTest.App</RootNamespace>
-    <AssemblyName>SkillsTest.GZipTest.App</AssemblyName>
+    <AssemblyName>GZipTest</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

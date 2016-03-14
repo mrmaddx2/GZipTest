@@ -18,12 +18,22 @@ namespace SkillsTest.GZipTest.App
                 Console.TreatControlCAsInput = true;
                 Console.CancelKeyPress += ConsoleOnCancelKeyPress;
 
-                string mode = args[0];
-                string input = args[1];
-                string output = args[2];
+                string mode;
+                string input;
+                string output;
+                if (args.Length >= 3)
+                {
+                    mode = args[0];
+                    input = args[1];
+                    output = args[2];
+                }
+                else
+                {
+                    throw new ArgumentException("В приложение необходимо передать как минимум 3 значения");
+                }
+                
 
                 long? fragmentSize = null;
-
                 if (args.Length >= 4)
                 {
                     long tmpfragmentSize;
