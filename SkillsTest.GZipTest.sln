@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillsTest.GZipTest.Core", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillsTest.GZipTest.App", "SkillsTest.GZipTest.App\SkillsTest.GZipTest.App.csproj", "{80510902-7347-4E64-ACB3-E467B785AC11}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkillsTest.GZipTest.TestUnit", "SkillsTest.GZipTest.TestUnit\SkillsTest.GZipTest.TestUnit.csproj", "{7D4F91DF-988E-4B1B-B85E-4CC58063B092}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{80510902-7347-4E64-ACB3-E467B785AC11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{80510902-7347-4E64-ACB3-E467B785AC11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{80510902-7347-4E64-ACB3-E467B785AC11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D4F91DF-988E-4B1B-B85E-4CC58063B092}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D4F91DF-988E-4B1B-B85E-4CC58063B092}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D4F91DF-988E-4B1B-B85E-4CC58063B092}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D4F91DF-988E-4B1B-B85E-4CC58063B092}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
