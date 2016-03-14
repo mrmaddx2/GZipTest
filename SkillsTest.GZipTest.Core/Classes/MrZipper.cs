@@ -282,6 +282,13 @@ namespace SkillsTest.GZipTest.Core
                         {
                             throw new ArgumentException("Необходимо указать размер блока данных для операции сжатия", "compressFragmentSize");
                         }
+                        else
+                        {
+                            if (compressFragmentSize < 512000)
+                            {
+                                throw new ArgumentException("Укажите большее значение для размера блока данных операции сжатия. необходимо указать значение более 512000", "compressFragmentSize");
+                            }
+                        }
                         break;
                     case CompressionMode.Decompress:
                         if (this.IndexOfNextCompressedPart(0) != 0)
@@ -532,7 +539,7 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="inputFilePath">Путь к файлу-источнику</param>
         /// <param name="outputFilePath">Путь к файлу-результату</param>
         /// <param name="compressFragmentSize">Размер фрагмента данных</param>
-        public void CompressAsync(string inputFilePath, string outputFilePath, long compressFragmentSize = 512000)
+        public void CompressAsync(string inputFilePath, string outputFilePath, long? compressFragmentSize = null)
         {
             if (this.Status == MrZipperStatusEnum.InProgress)
             {

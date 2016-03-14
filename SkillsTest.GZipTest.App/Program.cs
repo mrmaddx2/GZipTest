@@ -22,13 +22,24 @@ namespace SkillsTest.GZipTest.App
                 string input = args[1];
                 string output = args[2];
 
+                long? fragmentSize = null;
+
+                if (args.Length >= 4)
+                {
+                    long tmpfragmentSize;
+                    if (long.TryParse(args[3], out tmpfragmentSize))
+                    {
+                        fragmentSize = tmpfragmentSize;
+                    }
+                }
+
                 zipper = new MrZipper();
                 zipper.ConvertAsyncCompleted += ZipperOnConvertAsyncCompleted;
                 zipper.ProgressChanged += ZipperOnProgressChanged;
 
                 if (string.Equals(mode, "compress", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    zipper.CompressAsync(input, output);
+                    zipper.CompressAsync(input, output, fragmentSize);
                 }
                 else if (string.Equals(mode, "decompress", StringComparison.InvariantCultureIgnoreCase))
                 {
