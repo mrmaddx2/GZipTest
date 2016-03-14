@@ -38,8 +38,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\ConvertAsyncCompletedEventArgs.cs" />
     <Compile Include="Classes\MrZipper.cs" />
     <Compile Include="Classes\PieceOfResult.cs" />
+    <Compile Include="Classes\SourcePieces.cs" />
+    <Compile Include="Classes\ThreadDictionary.cs" />
+    <Compile Include="Enums\MrZipperStatusEnum.cs" />
     <Compile Include="Helpers\StreamHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

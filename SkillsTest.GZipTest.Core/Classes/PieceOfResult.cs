@@ -12,18 +12,22 @@ namespace SkillsTest.GZipTest.Core
     /// </summary>
     public class PieceOfResult : IDisposable
     {
+        #region Public
         /// <summary>
         /// Позиция в исходном файле, с которой начинается область проассоциированная с данным экземпляром
         /// </summary>
         public long StartIndex { get; private set; }
+        #endregion
+
+        #region Private
         /// <summary>
         /// Продолжительность проассоциированной с данным экземпляром области исходного файла
         /// </summary>
-        private long InputLength { get; set; }
+        private long InputLength;
         /// <summary>
         /// Путь к файлу-результату
         /// </summary>
-        private string OutputFilePath { get; set; }
+        private string OutputFilePath;
         /// <summary>
         /// Поток файла-результата
         /// </summary>
@@ -33,6 +37,9 @@ namespace SkillsTest.GZipTest.Core
         /// Путь к исходному файлу
         /// </summary>
         private string inputFilePath;
+        #endregion
+
+        
 
         /// <param name="inputFilePath">Путь к исходному файлу</param>
         /// <param name="startIndex">Позиция в исходном файле, с которой начинается область проассоциированная с данным экземпляром</param>
