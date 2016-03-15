@@ -71,7 +71,7 @@ namespace SkillsTest.GZipTest.Core
             {
                 lock (percentCompletedDummy)
                 {
-                    if (this.runningThreads.SaveCount == 0 && this.percentCompleted > 0)
+                    if (this.runningThreads.SafeCount == 0 && this.percentCompleted > 0)
                     {
                         percentCompleted = 100;
                     }
@@ -89,7 +89,12 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Максимальное кол-во потоков обработки
         /// </summary>
-        private static int maxThreads;
+        private static uint maxThreads;
+        /// <summary>
+        /// Значение по умолчанию для размера фрагмента сжимаемых данных
+        /// </summary>
+        private static uint defaultFragmentSize = 512000;
+
         /// <summary>
         /// Информация о бегущих потоках
         /// </summary>
@@ -106,13 +111,13 @@ namespace SkillsTest.GZipTest.Core
             {
                 lock (StatusDummy)
                 {
-                    if (this.runningThreads.SaveCount != 0)
+                    if (this.runningThreads.SafeCount != 0)
                     {
                         return MrZipperStatusEnum.InProgress;
                     }
                     else
                     {
-                        if (this.SourceList.SaveCount == 0)
+                        if (this.SourceList.SafeCount == 0)
                         {
                             return MrZipperStatusEnum.Done;
                         }
@@ -157,6 +162,8 @@ namespace SkillsTest.GZipTest.Core
 
         protected void OnConvertAsyncCompleted(ConvertAsyncCompletedEventArgs e)
         {
+            ReleaseLock();
+
             switch (e.CompressionMode)
             {
                 case CompressionMode.Compress:
@@ -174,36 +181,43 @@ namespace SkillsTest.GZipTest.Core
             {
                 handler(e);
             }
-
-            ReleaseLock();
         }
 
 
         private void ConvertPiecesCompleted(ConvertAsyncCompletedEventArgs e, AsyncOperation operation)
         {
-            this.runningThreads.SafeRemove(e.UserState.ToString());
-
-            if (e.Error != null)
+            try
             {
-                OnConvertAsyncCompleted(e);
-            }
-            else
-            {
-                if (this.runningThreads.SaveCount == 0)
+                if (e.Error != null)
                 {
-                    if (this.SourceList.SaveCount == 0)
+                    OnConvertAsyncCompleted(e);
+                }
+                else
+                {
+                    if (this.runningThreads.SafeIamTheLast(operation))
                     {
-                        this.WriteResult();
-                    }
+                        if (this.SourceList.SafeCount == 0)
+                        {
+                            this.WriteResult();
+                        }
 
-                    if (IsCancelled || this.SourceList.SaveCount == 0)
-                    {
-                        OnConvertAsyncCompleted(e);
+                        if (e.Cancelled || this.SourceList.SafeCount == 0)
+                        {
+                            OnConvertAsyncCompleted(e);
+                        }
                     }
                 }
             }
-
-            operation.OperationCompleted();
+            catch (Exception exception)
+            {
+                var newEventArgs = new ConvertAsyncCompletedEventArgs(e.CompressionMode, exception, e.Cancelled,
+                    e.UserState);
+                OnConvertAsyncCompleted(newEventArgs);
+            }
+            finally
+            {
+                this.runningThreads.SafeRemoveAndComplete(e.UserState.ToString());
+            }
         }
 
         protected void OnProgressChanged(ProgressChangedEventArgs e)
@@ -216,8 +230,11 @@ namespace SkillsTest.GZipTest.Core
 
         static MrZipper()
         {
-            //TODO : Надо бы определять значение в зависимости от кол-ва процессоров
-            MrZipper.maxThreads = 5;
+            MrZipper.maxThreads = ProcessInfo.NumberOfProcessorThreads;
+            if (MrZipper.maxThreads == 0)
+            {
+                MrZipper.maxThreads = 1;
+            }
         }
 
         
@@ -258,7 +275,7 @@ namespace SkillsTest.GZipTest.Core
             //Очень уж обширное обновление
             lock (this)
             {
-                this.runningThreads.SaveClear();
+                this.runningThreads.SafeClear();
 
                 this.percentCompleted = 0;
                 this.IsCancelled = false;
@@ -268,26 +285,20 @@ namespace SkillsTest.GZipTest.Core
                     this.ResultList.Clear();
                 }
 
-                this.SourceList.SaveClear();
+                this.SourceList.SafeClear();
 
                 this.inputFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                this.outputFile = new FileStream(outputFilePath, FileMode.Create, FileAccess.Write, FileShare.Read);
+                this.outputFile = new FileStream(outputFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
 
                 #region Валидация
 
                 switch (mode)
                 {
                     case CompressionMode.Compress:
-                        if (compressFragmentSize == null)
+                        compressFragmentSize = compressFragmentSize ?? defaultFragmentSize;
+                        if (compressFragmentSize < defaultFragmentSize)
                         {
-                            throw new ArgumentException("Необходимо указать размер блока данных для операции сжатия", "compressFragmentSize");
-                        }
-                        else
-                        {
-                            if (compressFragmentSize < 512000)
-                            {
-                                throw new ArgumentException("Укажите большее значение для размера блока данных операции сжатия. необходимо указать значение более 512000", "compressFragmentSize");
-                            }
+                            throw new ArgumentException(string.Format("Укажите большее значение для размера блока данных операции сжатия. необходимо указать значение более {0}", defaultFragmentSize), "compressFragmentSize");
                         }
                         break;
                     case CompressionMode.Decompress:
@@ -398,7 +409,7 @@ namespace SkillsTest.GZipTest.Core
             }
             finally
             {
-                if (this.inputFile != null)
+                if (this.inputFile != null && this.inputFile.CanRead)
                 {
                     this.inputFile.Flush();
                 }
@@ -652,13 +663,13 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         private void ReleaseLock()
         {
-            if (outputFile != null)
+            if (outputFile != null && this.outputFile.CanRead)
             {
                 this.outputFile.Flush();
                 outputFile.Close();
             }
 
-            if (inputFile != null)
+            if (inputFile != null && this.inputFile.CanRead)
             {
                 this.inputFile.Flush();
                 inputFile.Close();
