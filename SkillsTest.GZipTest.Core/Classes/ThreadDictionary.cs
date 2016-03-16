@@ -24,21 +24,7 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public void SafeRemoveAndComplete(string key)
-        {
-            lock (this.Values)
-            {
-                var operation = this[key];
-
-                if (operation != null)
-                {
-                    operation.OperationCompleted();
-                    this.Remove(key);
-                }
-            }
-        }
-
-        public void SafeClear()
+        public void SaveClear()
         {
             lock (this.Values)
             {
@@ -52,7 +38,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        public int SafeCount
+        public int SaveCount
         {
             get
             {
@@ -64,15 +50,6 @@ namespace SkillsTest.GZipTest.Core
                 }
 
                 return result;
-            }
-        }
-
-
-        public bool SafeIamTheLast(AsyncOperation value)
-        {
-            lock (this.Values)
-            {
-                return ContainsValue(value) && Count == 1;
             }
         }
     }

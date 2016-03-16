@@ -112,7 +112,7 @@ namespace SkillsTest.GZipTest.Core
             }
             finally
             {
-                if (inFile != null && inFile.CanRead)
+                if (inFile != null)
                 {
                     inFile.Flush();
                     inFile.Close();
@@ -138,7 +138,7 @@ namespace SkillsTest.GZipTest.Core
                 tmpMemStream.Position = 0;
 
                 outputFile = new FileStream(this.OutputFilePath, FileMode.Create, FileAccess.ReadWrite,
-                    FileShare.Read);
+                    FileShare.None);
 
                 using (GZipStream zipStream = new GZipStream(tmpMemStream, CompressionMode.Decompress, true))
                 {
@@ -160,7 +160,7 @@ namespace SkillsTest.GZipTest.Core
             }
             finally
             {
-                if (inFile != null && inFile.CanRead)
+                if (inFile != null)
                 {
                     inFile.Flush();
                     inFile.Close();
@@ -201,7 +201,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         private void ReleaseLock()
         {
-            if (this.outputFile != null && this.outputFile.CanRead)
+            if (this.outputFile != null)
             {
                 this.outputFile.Flush();
                 this.outputFile.Close();

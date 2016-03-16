@@ -24,7 +24,7 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public void SafeClear()
+        public void SaveClear()
         {
             lock (this)
             {
@@ -33,7 +33,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        public int SafeCount
+        public int SaveCount
         {
             get
             {
