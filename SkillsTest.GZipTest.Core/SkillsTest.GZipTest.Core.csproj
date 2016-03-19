@@ -20,6 +20,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -36,14 +37,17 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\ConvertAsyncCompletedEventArgs.cs" />
     <Compile Include="Classes\MrZipper.cs" />
+    <Compile Include="Classes\OutputFile.cs" />
     <Compile Include="Classes\PieceOfResult.cs" />
     <Compile Include="Classes\SourcePieces.cs" />
     <Compile Include="Classes\ThreadDictionary.cs" />
     <Compile Include="Enums\MrZipperStatusEnum.cs" />
+    <Compile Include="Helpers\ProcessInfo.cs" />
     <Compile Include="Helpers\StreamHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
