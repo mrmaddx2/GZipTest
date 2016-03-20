@@ -7,7 +7,9 @@ namespace SkillsTest.GZipTest.Core
 {
     public enum MrZipperStatusEnum
     {
-        None,
+        Unknown,
+        Canceled,
+        Error,
         InProgress,
         Done
     }

@@ -6,30 +6,37 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class ThreadDictionary : Dictionary<string, AsyncOperation>
+    public class ThreadDictionary : Dictionary<string, AsyncOperation>, IThreadDictionary
     {
-        public readonly Object SyncRoot = new object();
+        public Object SyncRoot { get; private set; }
 
-        public void SafeAdd(string key, AsyncOperation value)
+        public ThreadDictionary()
+        {
+            this.SyncRoot = new object();
+        }
+
+        public void SafeAdd(AsyncOperation value)
         {
             lock (this.SyncRoot)
             {
-                base.Add(key, value);
+                base.Add(value.UserSuppliedState.ToString(), value);
             }
         }
 
-        public void SafeRemove(string key)
+        public void SafeRemove(AsyncOperation value)
         {
             lock (this.SyncRoot)
             {
-                base.Remove(key);
+                base.Remove(value.UserSuppliedState.ToString());
             }
         }
 
-        public void SafeRemoveAndComplete(string key)
+        public void SafeRemoveAndComplete(AsyncOperation value)
         {
             lock (this.SyncRoot)
             {
+                string key = value.UserSuppliedState.ToString();
+
                 var operation = this[key];
 
                 if (operation != null)

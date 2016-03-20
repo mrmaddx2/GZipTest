@@ -14,12 +14,20 @@ namespace SkillsTest.GZipTest.Core
 
         public ExtendedPieceOfResultStatus Status { get; set; }
 
-        protected virtual IPieceOfResult pieceOfResult { get; set; }
+        protected IPieceOfResult pieceOfResult { get; set; }
 
-        public ExtendedPieceOfResult(IPieceOfResult pieceOfResult)
+        public ExtendedPieceOfResult(IPieceOfResult inputPieceOfResult)
         {
-            this.pieceOfResult = pieceOfResult;
-            this.Status = ExtendedPieceOfResultStatus.Unknown;
+            this.pieceOfResult = inputPieceOfResult;
+            if (this.pieceOfResult.GetOutputBuffer(false).Length > 0)
+            {
+                this.Status = ExtendedPieceOfResultStatus.Ready;
+            }
+            else
+            {
+                this.Status = ExtendedPieceOfResultStatus.Unknown;
+            }
+            
         }
 
         public long InputStartIndex
@@ -47,7 +55,7 @@ namespace SkillsTest.GZipTest.Core
             return this.pieceOfResult.GetOutputBuffer(releaseLock);
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             if (this.pieceOfResult != null)
             {

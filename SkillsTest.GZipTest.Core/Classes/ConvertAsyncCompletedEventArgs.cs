@@ -7,22 +7,17 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
+    /// <summary>
+    /// Информация о результатах работы потока обработки данных
+    /// </summary>
     public class ConvertAsyncCompletedEventArgs : AsyncCompletedEventArgs
     {
-        private CompressionMode compressionMode;
-
-        public CompressionMode CompressionMode
-        {
-            get
-            {
-                return compressionMode;
-            }
-        }
+        public CompressionMode CompressionMode { get; protected set; }
 
         public ConvertAsyncCompletedEventArgs(CompressionMode mode, Exception error, bool isCancelled, object state)
             : base(error, isCancelled, state)
         {
-            this.compressionMode = mode;
+            this.CompressionMode = mode;
         }
     }
 }
