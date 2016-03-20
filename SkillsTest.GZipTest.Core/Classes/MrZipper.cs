@@ -365,21 +365,27 @@ namespace SkillsTest.GZipTest.Core
 
                 int currentByte;
                 int matchesCount = 0;
-                while ((currentByte = this.inputFile.ReadByte()) != -1)
-                {
-                    if (Convert.ToByte(currentByte) == gZipMagicheader[matchesCount])
-                    {
-                        matchesCount++;
-                    }
-                    else
-                    {
-                        matchesCount = 0;
-                    }
 
-                    if (matchesCount == gZipMagicheader.Length)
+                var buffer = new byte[DefaultFragmentSize*5];
+                long nRead;
+                while (((nRead = inputFile.Read(buffer, 0, buffer.Length)) > 0) && result == null)
+                {
+                    for (int i = 0; i <= nRead - 1; i++)
                     {
-                        result = this.inputFile.Position - gZipMagicheader.Length;
-                        break;
+                        if (buffer[i] == gZipMagicheader[matchesCount])
+                        {
+                            matchesCount++;
+                        }
+                        else
+                        {
+                            matchesCount = 0;
+                        }
+
+                        if (matchesCount == gZipMagicheader.Length)
+                        {
+                            result = this.inputFile.Position - (nRead - 1) + i - gZipMagicheader.Length;
+                            break;
+                        }
                     }
                 }
 
@@ -387,6 +393,10 @@ namespace SkillsTest.GZipTest.Core
                 if (matchesCount == 0 && this.inputFile.Position >= this.inputFile.Length)
                 {
                     result = this.inputFile.Length;
+                }
+                else if (result != null)
+                {
+                    this.inputFile.Position = (long) result + 1;
                 }
             }
             catch (Exception exception)
