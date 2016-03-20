@@ -8,9 +8,11 @@ namespace SkillsTest.GZipTest.Core
 {
     public class ThreadDictionary : Dictionary<string, AsyncOperation>
     {
+        public readonly Object SyncRoot = new object();
+
         public void SafeAdd(string key, AsyncOperation value)
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
             {
                 base.Add(key, value);
             }
@@ -18,7 +20,7 @@ namespace SkillsTest.GZipTest.Core
 
         public void SafeRemove(string key)
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
             {
                 base.Remove(key);
             }
@@ -26,7 +28,7 @@ namespace SkillsTest.GZipTest.Core
 
         public void SafeRemoveAndComplete(string key)
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
             {
                 var operation = this[key];
 
@@ -40,7 +42,7 @@ namespace SkillsTest.GZipTest.Core
 
         public void SafeClear()
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
             {
                 foreach (var currentThread in this.Values)
                 {
@@ -56,21 +58,17 @@ namespace SkillsTest.GZipTest.Core
         {
             get
             {
-                int result;
-
-                lock (this.Values)
+                lock (this.SyncRoot)
                 {
-                    result = this.Count;
+                    return this.Count;
                 }
-
-                return result;
             }
         }
 
 
         public bool SafeIamTheLast(AsyncOperation value)
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
             {
                 return ContainsValue(value) && Count == 1;
             }

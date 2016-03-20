@@ -67,6 +67,9 @@ namespace SkillsTest.GZipTest.TestUnit
         [TestMethod]
         public void Decompress()
         {
+            this.subject.Compress(TestContext.Properties["rawFilePath"].ToString(),
+                TestContext.Properties["compressedFilePath"].ToString());
+
             this.subject.Decompress(TestContext.Properties["compressedFilePath"].ToString(),
                 TestContext.Properties["decompressedFilePath"].ToString());
         }
@@ -75,6 +78,8 @@ namespace SkillsTest.GZipTest.TestUnit
         [TestMethod]
         public void CheckEquality()
         {
+            this.Decompress();
+
             var rawFile = File.ReadAllBytes(TestContext.Properties["rawFilePath"].ToString());
             var decompressedFile = File.ReadAllBytes(TestContext.Properties["decompressedFilePath"].ToString());
 

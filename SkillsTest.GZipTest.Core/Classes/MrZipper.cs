@@ -15,7 +15,7 @@ namespace SkillsTest.GZipTest.Core
     public class MrZipper : IDisposable
     {
         #region Delegates
-        private delegate void ConvertPiecesActionHandler(
+        protected delegate void ConvertPiecesActionHandler(
             string inputFilePath, string outputFilePath, CompressionMode compressionMode, AsyncOperation asyncOperation);
 
         public delegate void ProgressChangedEventHandler(
@@ -33,7 +33,7 @@ namespace SkillsTest.GZipTest.Core
 
         #region Properties & fields
         private readonly object IsCancelledDummy = new object();
-        private bool isCancelled;
+        protected bool isCancelled;
         /// <summary>
         /// Отменена ли асинхронная операция
         /// </summary>
@@ -58,14 +58,14 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Сколько процентов от общего числа составляет один обработанный кусочек. Заполняется в методе <see cref="Refresh"/>
         /// </summary>
-        private decimal percentCompletedInc;
+        protected decimal percentCompletedInc;
 
         private readonly object percentCompletedDummy = new object();
-        private decimal percentCompleted;
+        protected decimal percentCompleted;
         /// <summary>
         /// Выраженный в процентах прогресс текущей асинхронной операции.
         /// </summary>
-        private int PercentCompleted
+        protected int PercentCompleted
         {
             get
             {
@@ -84,28 +84,28 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Значение-костыль, являющееся по совместитульству магическим числом для gz формата
         /// </summary>
-        private static readonly byte[] gZipMagicheader = { 31, 139, 08 };
+        protected static readonly byte[] gZipMagicheader = { 31, 139, 08 };
 
         /// <summary>
         /// Максимальное кол-во потоков обработки
         /// </summary>
-        private static uint maxThreads;
+        protected static uint maxThreads;
         /// <summary>
         /// Значение по умолчанию для размера фрагмента сжимаемых данных
         /// </summary>
-        private static uint defaultFragmentSize = 512000;
+        protected static uint defaultFragmentSize = 512000;
 
         /// <summary>
         /// Информация о бегущих потоках
         /// </summary>
-        private ThreadDictionary runningThreads = new ThreadDictionary();
+        protected ThreadDictionary runningThreads = new ThreadDictionary();
 
 
         private readonly object StatusDummy = new object();
         /// <summary>
         /// Текущий статус экземпляра. Актуален лишь во время выполнения асинхронных операций.
         /// </summary>
-        private MrZipperStatusEnum Status
+        protected MrZipperStatusEnum Status
         {
             get
             {
@@ -133,21 +133,13 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Коллекция с наметками фрагментов исходного файла. Заполняется в методе <see cref="Refresh"/>
         /// </summary>
-        private SourcePieces SourceList = new SourcePieces();
-        /// <summary>
-        /// Коллекция с результами работы экземпляра. Очищается в методе <see cref="Refresh"/>, а заполняется по мере работы методов сжатия и распаковки
-        /// </summary>
-        private List<PieceOfResult> ResultList = new List<PieceOfResult>();
+        protected SourcePieces SourceList = new SourcePieces();
+        protected IOutputFile outputFile;
         /// <summary>
         /// Поток с исходным файлом. Заполняется в методе <see cref="Refresh"/>
         /// </summary>
         /// <remarks>Поток остается открыт на протяжении работы операций сжатия и распаковки. Это необходимо для защиты от модификации файла во время работы методов.</remarks>
-        private FileStream inputFile;
-        /// <summary>
-        /// Поток с файлом-результатом. Заполняется в методе <see cref="Refresh"/>
-        /// </summary>
-        /// <remarks>Поток остается открыт на протяжении работы операций сжатия и распаковки. Это необходимо для защиты от модификации файла во время работы методов.</remarks>
-        private FileStream outputFile;
+        protected Stream inputFile;
 
         #endregion
 
@@ -155,12 +147,12 @@ namespace SkillsTest.GZipTest.Core
         {
         }
 
-        public void CancelConvertAsync()
+        public virtual void CancelConvertAsync()
         {
             this.IsCancelled = true;
         }
 
-        protected void OnConvertAsyncCompleted(ConvertAsyncCompletedEventArgs e)
+        protected virtual void OnConvertAsyncCompleted(ConvertAsyncCompletedEventArgs e)
         {
             switch (e.CompressionMode)
             {
@@ -182,25 +174,20 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        private void ConvertPiecesCompleted(ConvertAsyncCompletedEventArgs e, AsyncOperation operation)
+        protected virtual void ConvertPiecesCompleted(ConvertAsyncCompletedEventArgs e, AsyncOperation operation)
         {
-            try
+            lock (this.runningThreads.SyncRoot)
             {
-                if (e.Error != null)
+                try
                 {
-                    OnConvertAsyncCompleted(e);
-                }
-                else
-                {
-                    lock (this.runningThreads)
+                    if (e.Error != null)
+                    {
+                        OnConvertAsyncCompleted(e);
+                    }
+                    else
                     {
                         if (this.runningThreads.SafeIamTheLast(operation))
                         {
-                            if (this.SourceList.SafeCount == 0)
-                            {
-                                this.WriteResult();
-                            }
-
                             if (e.Cancelled || this.SourceList.SafeCount == 0)
                             {
                                 OnConvertAsyncCompleted(e);
@@ -208,20 +195,20 @@ namespace SkillsTest.GZipTest.Core
                         }
                     }
                 }
-            }
-            catch (Exception exception)
-            {
-                var newEventArgs = new ConvertAsyncCompletedEventArgs(e.CompressionMode, exception, e.Cancelled,
-                    e.UserState);
-                OnConvertAsyncCompleted(newEventArgs);
-            }
-            finally
-            {
-                this.runningThreads.SafeRemoveAndComplete(e.UserState.ToString());
+                catch (Exception exception)
+                {
+                    var newEventArgs = new ConvertAsyncCompletedEventArgs(e.CompressionMode, exception, e.Cancelled,
+                        e.UserState);
+                    OnConvertAsyncCompleted(newEventArgs);
+                }
+                finally
+                {
+                    this.runningThreads.SafeRemoveAndComplete(e.UserState.ToString());
+                }
             }
         }
 
-        protected void OnProgressChanged(ProgressChangedEventArgs e)
+        protected virtual void OnProgressChanged(ProgressChangedEventArgs e)
         {
             if (ProgressChanged != null)
             {
@@ -246,18 +233,16 @@ namespace SkillsTest.GZipTest.Core
         /// Полученная наметка будет удалена из коллекции <see cref="SourceList"/>
         /// </summary>
         /// <returns>Наметка фрагмента файла-источника или null если все обработаны</returns>
-        private PieceOfSource? Fetch()
+        protected virtual PieceOfSource? Fetch()
         {
             PieceOfSource? result = null;
 
             lock (this.SourceList)
             {
-                int lastIndex = this.SourceList.Count - 1;
-
-                if (lastIndex >= 0)
+                if (this.SourceList.Count > 0)
                 {
-                    result = this.SourceList[lastIndex];
-                    this.SourceList.RemoveAt(lastIndex);
+                    result = this.SourceList[0];
+                    this.SourceList.RemoveAt(0);
                 }
             }
 
@@ -271,25 +256,22 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="outputFilePath">Путь к файлу-результату</param>
         /// <param name="mode">Режим работы</param>
         /// <param name="compressFragmentSize">Размер фрагмента данных для операции сжатия</param>
-        private void Refresh(string inputFilePath, string outputFilePath, CompressionMode mode, long? compressFragmentSize = null)
+        protected virtual void Refresh(string inputFilePath, string outputFilePath, CompressionMode mode, long? compressFragmentSize = null)
         {
             //Очень уж обширное обновление
             lock (this)
             {
+                this.ReleaseLock();
                 this.runningThreads.SafeClear();
 
                 this.percentCompleted = 0;
                 this.IsCancelled = false;
 
-                lock (this.ResultList)
-                {
-                    this.ResultList.Clear();
-                }
-
                 this.SourceList.SafeClear();
 
                 this.inputFile = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                this.outputFile = new FileStream(outputFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read);
+                this.outputFile = new OutputFile(outputFilePath);
+
 
                 #region Валидация
 
@@ -360,7 +342,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="setStreamPosition">Позиция в <see cref="inputFile"/>, с которой метод начнет читать данные</param>
         /// <returns>Позиция начала фрагмента данных в архиве</returns>
-        private long? IndexOfNextCompressedPart(long? setStreamPosition = null)
+        protected long? IndexOfNextCompressedPart(long? setStreamPosition = null)
         {
             //TODO : ускорить
             long? result = null;
@@ -424,7 +406,7 @@ namespace SkillsTest.GZipTest.Core
         /// Фетчит одну за другой наметки от файла-источника и проделывает с ними операцию <paramref name="compressionMode"/>
         /// </summary>
         /// <param name="asyncOperation">Экземпляр описывающий текущий поток. Если null то метод считает, что он выполняется в синхронном режиме</param>
-        private void ConvertPieces(string inputFilePath, string outputFileFolder, CompressionMode compressionMode, AsyncOperation asyncOperation = null)
+        protected virtual void ConvertPieces(string inputFilePath, string outputFileFolder, CompressionMode compressionMode, AsyncOperation asyncOperation = null)
         {
             Exception e = null;
 
@@ -434,8 +416,7 @@ namespace SkillsTest.GZipTest.Core
                 //До тех пор пока не закончатся наметки или не отменят асинхронную операцию
                 while ((newPiece = this.Fetch()) != null && !this.IsCancelled)
                 {
-                    var pieceOfResult = new PieceOfResult(inputFilePath, (PieceOfSource) newPiece,
-                        outputFileFolder);
+                    var pieceOfResult = new PieceOfResult(inputFilePath, (PieceOfSource) newPiece);
 
                     switch (compressionMode)
                     {
@@ -449,7 +430,7 @@ namespace SkillsTest.GZipTest.Core
                             throw new ArgumentOutOfRangeException("compressionMode");
                     }
 
-                    this.ResultList.Add(pieceOfResult);
+                    this.outputFile.AddPiece(pieceOfResult);
 
                     //Если запущены в асинхронном режиме - необходимо проделать чуть больше работы
                     if (asyncOperation != null)
@@ -486,7 +467,7 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="incValue">Значение на которое будет увеличено свойство</param>
         /// <param name="changed">Изменилось ли значение свойства</param>
         /// <returns></returns>
-        private int IncPersentCompleted(decimal incValue, out bool changed)
+        protected virtual int IncPersentCompleted(decimal incValue, out bool changed)
         {
             decimal result = 0;
             lock (percentCompletedDummy)
@@ -519,7 +500,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="incProgress">Значение на которое будет увеличено свойство</param>
         /// <param name="state">Идентификатор потока в котором была обработана порция данных</param>
-        private void ReportProgress(decimal incProgress, object state)
+        protected virtual void ReportProgress(decimal incProgress, object state)
         {
             bool changed = false;
             var tmpPerc = IncPersentCompleted(incProgress, out changed);
@@ -535,13 +516,13 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="inputFilePath">Путь к файлу-источнику</param>
         /// <param name="outputFilePath">Путь к файлу-результату</param>
         /// <param name="compressFragmentSize">Размер фрагмента данных</param>
-        public void Compress(string inputFilePath, string outputFilePath, long compressFragmentSize = 512000)
+        public virtual void Compress(string inputFilePath, string outputFilePath, long compressFragmentSize = 512000)
         {
             this.Refresh(inputFilePath, outputFilePath, CompressionMode.Compress, compressFragmentSize);
 
             this.ConvertPieces(inputFilePath, Path.GetDirectoryName(outputFilePath), CompressionMode.Compress);
 
-            this.WriteResult();
+            this.ReleaseLock();
         }
 
 
@@ -551,7 +532,7 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="inputFilePath">Путь к файлу-источнику</param>
         /// <param name="outputFilePath">Путь к файлу-результату</param>
         /// <param name="compressFragmentSize">Размер фрагмента данных</param>
-        public void CompressAsync(string inputFilePath, string outputFilePath, long? compressFragmentSize = null)
+        public virtual void CompressAsync(string inputFilePath, string outputFilePath, long? compressFragmentSize = null)
         {
             if (this.Status == MrZipperStatusEnum.InProgress)
             {
@@ -585,7 +566,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="inputFilePath">Путь к файлу-источнику</param>
         /// <param name="outputFilePath">Путь к файлу-результату</param>
-        public void DecompressAsync(string inputFilePath, string outputFilePath)
+        public virtual void DecompressAsync(string inputFilePath, string outputFilePath)
         {
             if (this.Status == MrZipperStatusEnum.InProgress)
             {
@@ -617,67 +598,34 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>Распаковка файла и запись результатан а диск</summary>
         /// <param name="inputFilePath">Путь к файлу-источнику</param>
         /// <param name="outputFilePath">Путь к файлу-результату</param>
-        public void Decompress(string inputFilePath, string outputFilePath)
+        public virtual void Decompress(string inputFilePath, string outputFilePath)
         {
             this.Refresh(inputFilePath, outputFilePath, CompressionMode.Decompress);
 
             this.ConvertPieces(inputFilePath, Path.GetDirectoryName(outputFilePath), CompressionMode.Decompress);
 
-            this.WriteResult();
-        }
-
-        
-
-        /// <summary>
-        /// Собирает все обработанные кусочки данных в единый файл-результат
-        /// </summary>
-        private void WriteResult()
-        {
-            try
-            {
-                var pieces =
-                    this.ResultList.OrderBy(x => x.StartIndex);
-
-                foreach (
-                    var currentPiece in
-                        pieces)
-                {
-                    var tmpBuffer = currentPiece.GetOutputBuffer();
-
-                    outputFile.Write(tmpBuffer, 0, tmpBuffer.Length);
-
-                    outputFile.Flush();
-                }
-            }
-            catch (Exception exception)
-            {
-                throw new Exception(string.Format("Запись в файл {0}", outputFile.Name), exception);
-            }
-            finally
-            {
-                ReleaseLock();
-            }
+            this.ReleaseLock();
         }
 
         /// <summary>
         /// Освобождает связанные с экземпляром ресурсы
         /// </summary>
-        private void ReleaseLock()
+        protected virtual void ReleaseLock()
         {
-            if (outputFile != null && this.outputFile.CanRead)
+            if (outputFile != null)
             {
-                this.outputFile.Flush();
-                outputFile.Close();
+                this.outputFile.Dispose();
+                this.outputFile = null;
             }
 
-            if (inputFile != null && this.inputFile.CanRead)
+            if (inputFile != null)
             {
-                this.inputFile.Flush();
-                inputFile.Close();
+                this.inputFile.Dispose();
+                this.inputFile = null;
             }
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             ReleaseLock();
         }
