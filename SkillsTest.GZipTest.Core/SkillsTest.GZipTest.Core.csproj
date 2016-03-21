@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\ConvertAsyncCompletedEventArgs.cs" />
+    <Compile Include="Classes\ConvertProgressChangedEventArgs.cs" />
     <Compile Include="Classes\ExtendedPieceOfResult.cs" />
     <Compile Include="Classes\MrZipper.cs" />
     <Compile Include="Classes\OutputFile.cs" />

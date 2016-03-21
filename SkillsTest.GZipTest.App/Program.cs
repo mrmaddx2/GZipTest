@@ -121,15 +121,16 @@ namespace SkillsTest.GZipTest.App
             e.Cancel = true;
         }
 
-        private static void ZipperOnProgressChanged(ProgressChangedEventArgs e)
+        private static void ZipperOnProgressChanged(ConvertProgressChangedEventArgs e)
         {
-            string msgText = string.Format("Progress: {0}%", e.ProgressPercentage);
+            string msgText = string.Format("{0}% Elapsed {1:g} Remains {2:g}", e.ProgressPercentage, e.Elapsed, e.Remains);
 
 #if DEBUG
             msgText += " Thread " + e.UserState;
 #endif
-
             Console.WriteLine(msgText);
         }
     }
+
+
 }

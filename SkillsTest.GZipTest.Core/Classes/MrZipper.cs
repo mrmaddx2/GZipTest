@@ -28,6 +28,11 @@ namespace SkillsTest.GZipTest.Core
 
         #region Properties & fields
         /// <summary>
+        /// Дата и время старта асинхронной операции. Заполняется в методе <see cref="Refresh"/>
+        /// </summary>
+        protected DateTime? AsyncOpStartDttm { get; set; }
+
+        /// <summary>
         /// Сколько процентов от общего числа составляет один обработанный кусочек. Заполняется в методе <see cref="Refresh"/>
         /// </summary>
         protected decimal percentCompletedInc;
@@ -87,7 +92,7 @@ namespace SkillsTest.GZipTest.Core
 
 
         private MrZipperStatusEnum status;
-        private readonly object StatusDummy = new object();
+        private readonly object statusDummy = new object();
         /// <summary>
         /// Текущий статус экземпляра. Актуален лишь во время выполнения асинхронных операций.
         /// </summary>
@@ -95,15 +100,23 @@ namespace SkillsTest.GZipTest.Core
         {
             get
             {
-                lock (StatusDummy)
+                lock (statusDummy)
                 {
                     return this.status;
                 }
             }
             set
             {
-                lock (StatusDummy)
+                lock (statusDummy)
                 {
+                    if (this.status != value && value == MrZipperStatusEnum.InProgress)
+                    {
+                        this.AsyncOpStartDttm = DateTime.Now;
+                    }
+                    else if(value == MrZipperStatusEnum.Unknown)
+                    {
+                        this.AsyncOpStartDttm = null;
+                    }
                     this.status = value;
                 }
             }
@@ -210,7 +223,7 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        protected virtual void OnProgressChanged(ProgressChangedEventArgs e)
+        protected virtual void OnProgressChanged(ConvertProgressChangedEventArgs e)
         {
             if (ProgressChanged != null)
             {
@@ -261,7 +274,7 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="outputFilePath">Путь к файлу-результату</param>
         /// <param name="mode">Режим работы</param>
         /// <param name="compressFragmentSize">Размер фрагмента данных для операции сжатия</param>
-        protected virtual void Refresh(string inputFilePath, string outputFilePath, CompressionMode mode, long? compressFragmentSize = null)
+        protected virtual void Refresh(string inputFilePath, string outputFilePath, CompressionMode mode, long? compressFragmentSize = null, MrZipperStatusEnum initStatus = MrZipperStatusEnum.Unknown)
         {
             //Очень уж обширное обновление
             lock (this)
@@ -270,7 +283,7 @@ namespace SkillsTest.GZipTest.Core
                 this.runningThreads.SafeClear();
 
                 this.PercentCompleted = 0;
-                this.Status = MrZipperStatusEnum.Unknown;
+                this.Status = initStatus;
 
                 this.SourceList.SafeClear();
 
@@ -509,7 +522,7 @@ namespace SkillsTest.GZipTest.Core
 
             if (changed)
             {
-                OnProgressChanged(new ProgressChangedEventArgs(tmpPerc, state));
+                OnProgressChanged(new ConvertProgressChangedEventArgs(tmpPerc, state, this.AsyncOpStartDttm));
             }
         }
 
@@ -524,9 +537,7 @@ namespace SkillsTest.GZipTest.Core
                     throw new ThreadStateException("Асинхронная операция уже запущена!");
                 }
 
-                this.Refresh(inputFilePath, outputFilePath, mode, compressFragmentSize);
-
-                this.Status = MrZipperStatusEnum.InProgress;
+                this.Refresh(inputFilePath, outputFilePath, mode, compressFragmentSize, MrZipperStatusEnum.InProgress);
 
                 for (int i = 0; i <= MaxThreads - 1; i++)
                 {
