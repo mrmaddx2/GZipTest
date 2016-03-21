@@ -20,6 +20,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -39,13 +40,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\ConvertAsyncCompletedEventArgs.cs" />
+    <Compile Include="Classes\ExtendedPieceOfResult.cs" />
     <Compile Include="Classes\MrZipper.cs" />
+    <Compile Include="Classes\OutputFile.cs" />
     <Compile Include="Classes\PieceOfResult.cs" />
     <Compile Include="Classes\SourcePieces.cs" />
     <Compile Include="Classes\ThreadDictionary.cs" />
+    <Compile Include="Delegates\ConvertEventHandler.cs" />
+    <Compile Include="Delegates\ProgressChangedEventHandler.cs" />
     <Compile Include="Enums\MrZipperStatusEnum.cs" />
+    <Compile Include="Enums\ExtendedPieceOfResultStatus.cs" />
+    <Compile Include="Helpers\ProcessInfo.cs" />
     <Compile Include="Helpers\StreamHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
+    <Compile Include="Interfaces\IExtendedPieceOfResult.cs" />
+    <Compile Include="Interfaces\IMrZipper.cs" />
+    <Compile Include="Interfaces\IOutputFile.cs" />
+    <Compile Include="Interfaces\IPieceOfResult.cs" />
+    <Compile Include="Interfaces\IThreadDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Structs\PieceOfSource.cs" />
   </ItemGroup>

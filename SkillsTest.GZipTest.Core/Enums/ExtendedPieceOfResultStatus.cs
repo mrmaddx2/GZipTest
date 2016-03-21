@@ -5,12 +5,10 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public enum MrZipperStatusEnum
+    public enum ExtendedPieceOfResultStatus
     {
         Unknown,
-        Canceled,
-        Error,
-        InProgress,
-        Done
+        Ready,
+        Written
     }
 }

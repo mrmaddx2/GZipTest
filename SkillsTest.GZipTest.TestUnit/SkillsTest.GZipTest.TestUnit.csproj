@@ -26,6 +26,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -54,6 +55,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="ConsoleApp\ConsoleAppTest.cs" />
     <Compile Include="MrZipper\MrZipperMainTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
@@ -63,6 +65,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\SkillsTest.GZipTest.App\SkillsTest.GZipTest.App.csproj">
+      <Project>{80510902-7347-4e64-acb3-e467b785ac11}</Project>
+      <Name>SkillsTest.GZipTest.App</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SkillsTest.GZipTest.Core\SkillsTest.GZipTest.Core.csproj">
       <Project>{b9a494b8-8bc3-4d13-959b-acee1342fe88}</Project>
       <Name>SkillsTest.GZipTest.Core</Name>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -8,9 +9,11 @@ namespace SkillsTest.GZipTest.Core
 {
     public class SourcePieces : List<PieceOfSource>
     {
+        public readonly Object SyncRoot = new object();
+
         public void SafeAdd(PieceOfSource value)
         {
-            lock (this)
+            lock (SyncRoot)
             {
                 base.Add(value);
             }
@@ -18,33 +21,29 @@ namespace SkillsTest.GZipTest.Core
 
         public void SafeRemove(PieceOfSource key)
         {
-            lock (this)
+            lock (SyncRoot)
             {
                 base.Remove(key);
             }
         }
 
-        public void SaveClear()
+        public void SafeClear()
         {
-            lock (this)
+            lock (SyncRoot)
             {
                 base.Clear();
             }
         }
 
 
-        public int SaveCount
+        public int SafeCount
         {
             get
             {
-                int result;
-
-                lock (this)
+                lock (SyncRoot)
                 {
-                    result = this.Count;
+                    return this.Count;
                 }
-
-                return result;
             }
         }
     }

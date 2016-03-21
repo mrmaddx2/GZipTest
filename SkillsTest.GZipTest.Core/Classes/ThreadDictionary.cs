@@ -6,27 +6,50 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class ThreadDictionary : Dictionary<string, AsyncOperation>
+    public class ThreadDictionary : Dictionary<string, AsyncOperation>, IThreadDictionary
     {
-        public void SafeAdd(string key, AsyncOperation value)
+        public Object SyncRoot { get; private set; }
+
+        public ThreadDictionary()
         {
-            lock (this.Values)
+            this.SyncRoot = new object();
+        }
+
+        public void SafeAdd(AsyncOperation value)
+        {
+            lock (this.SyncRoot)
             {
-                base.Add(key, value);
+                base.Add(value.UserSuppliedState.ToString(), value);
             }
         }
 
-        public void SafeRemove(string key)
+        public void SafeRemove(AsyncOperation value)
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
             {
-                base.Remove(key);
+                base.Remove(value.UserSuppliedState.ToString());
             }
         }
 
-        public void SaveClear()
+        public void SafeRemoveAndComplete(AsyncOperation value)
         {
-            lock (this.Values)
+            lock (this.SyncRoot)
+            {
+                string key = value.UserSuppliedState.ToString();
+
+                var operation = this[key];
+
+                if (operation != null)
+                {
+                    operation.OperationCompleted();
+                    this.Remove(key);
+                }
+            }
+        }
+
+        public void SafeClear()
+        {
+            lock (this.SyncRoot)
             {
                 foreach (var currentThread in this.Values)
                 {
@@ -38,18 +61,23 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        public int SaveCount
+        public int SafeCount
         {
             get
             {
-                int result;
-
-                lock (this.Values)
+                lock (this.SyncRoot)
                 {
-                    result = this.Count;
+                    return this.Count;
                 }
+            }
+        }
 
-                return result;
+
+        public bool SafeIamTheLast(AsyncOperation value)
+        {
+            lock (this.SyncRoot)
+            {
+                return ContainsValue(value) && Count == 1;
             }
         }
     }

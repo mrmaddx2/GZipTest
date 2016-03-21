@@ -100,6 +100,7 @@ namespace SkillsTest.GZipTest.App
                 else
                 {
                     Console.WriteLine("Cancelled");
+                    exitCode = 1;
                 }
             }
             catch (Exception exception)
@@ -108,7 +109,10 @@ namespace SkillsTest.GZipTest.App
                 exitCode = 1;
             }
 
-            Console.ReadKey(true);
+            if (exitCode != 0)
+            {
+                Console.ReadKey(true);
+            }
             Environment.Exit(exitCode);
         }
 
@@ -119,7 +123,13 @@ namespace SkillsTest.GZipTest.App
 
         private static void ZipperOnProgressChanged(ProgressChangedEventArgs e)
         {
-            Console.WriteLine(string.Format("Progress: {0}%", e.ProgressPercentage));
+            string msgText = string.Format("Progress: {0}%", e.ProgressPercentage);
+
+#if DEBUG
+            msgText += " Thread " + e.UserState;
+#endif
+
+            Console.WriteLine(msgText);
         }
     }
 }

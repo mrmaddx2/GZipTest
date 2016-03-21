@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -9,24 +10,17 @@ using SkillsTest.GZipTest.Core;
 namespace SkillsTest.GZipTest.TestUnit
 {
     /// <summary>
-    /// Тестируем мистера зиппера
+    /// Тестируем приложение
     /// </summary>
     [TestClass]
-    public class MrZipperMainTest
+    public class ConsoleAppTest
     {
-        //TODO: Сделать нормальную очередность тестов
-
-        private MrZipper subject;
-
-        public MrZipperMainTest() : base()
-        {
-            this.subject = new MrZipper();
-        }
-
         [ClassInitialize()]
         public static void LoadTestData(TestContext context)
         {
             File.Copy(@"SampleData\sample.txt", Path.Combine(context.TestRunDirectory, @"sample.txt"));
+            File.Copy(@"GZipTest.exe", Path.Combine(context.TestRunDirectory, @"GZipTest.exe"));
+            File.Copy(@"SkillsTest.GZipTest.Core.dll", Path.Combine(context.TestRunDirectory, @"SkillsTest.GZipTest.Core.dll"));
         }
 
         [TestInitialize()]
@@ -35,6 +29,7 @@ namespace SkillsTest.GZipTest.TestUnit
             TestContext.Properties.Add("rawFilePath", Path.Combine(TestContext.TestRunDirectory, @"sample.txt"));
             TestContext.Properties.Add("compressedFilePath", Path.Combine(TestContext.TestResultsDirectory, @"arch.gz"));
             TestContext.Properties.Add("decompressedFilePath", Path.Combine(TestContext.TestResultsDirectory, @"result.txt"));
+            TestContext.Properties.Add("appPath", Path.Combine(TestContext.TestRunDirectory, @"GZipTest.exe"));
         }
 
         private TestContext testContextInstance;
@@ -55,23 +50,28 @@ namespace SkillsTest.GZipTest.TestUnit
             }
         }
 
-        
         [TestMethod]
         public void Compress()
         {
-            this.subject.Compress(TestContext.Properties["rawFilePath"].ToString(),
-                TestContext.Properties["compressedFilePath"].ToString());
+            Process process = new Process();
+            process.StartInfo = new ProcessStartInfo(TestContext.Properties["appPath"].ToString(), string.Format("compress \"{0}\" \"{1}\"", TestContext.Properties["rawFilePath"].ToString(), TestContext.Properties["compressedFilePath"].ToString()));
+            process.Start();
+            process.WaitForExit();
+
+            Assert.IsTrue(process.ExitCode == 0);
         }
 
-        
         [TestMethod]
         public void Decompress()
         {
-            this.subject.Compress(TestContext.Properties["rawFilePath"].ToString(),
-                TestContext.Properties["compressedFilePath"].ToString());
+            this.Compress();
 
-            this.subject.Decompress(TestContext.Properties["compressedFilePath"].ToString(),
-                TestContext.Properties["decompressedFilePath"].ToString());
+            Process decompress = new Process();
+            decompress.StartInfo = new ProcessStartInfo(TestContext.Properties["appPath"].ToString(), string.Format("decompress \"{0}\" \"{1}\"", TestContext.Properties["compressedFilePath"].ToString(), TestContext.Properties["decompressedFilePath"].ToString()));
+            decompress.Start();
+            decompress.WaitForExit();
+
+            Assert.IsTrue(decompress.ExitCode == 0);
         }
 
 
@@ -85,14 +85,6 @@ namespace SkillsTest.GZipTest.TestUnit
 
             //Грязный хак
             Assert.IsTrue(rawFile.SequenceEqual(decompressedFile));
-        }
-
-        [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
-        public void TryDecompressNonArcFile()
-        {
-            this.subject.Decompress(TestContext.Properties["rawFilePath"].ToString(),
-                Path.Combine(TestContext.TestResultsDirectory, "someResult.xxx"));
         }
     }
 }
