@@ -8,32 +8,27 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class OutputFile : IOutputFile
+    public class OutputFile : ProjectFile, IOutputFile
     {
-        /// <summary>
-        /// Поток с файлом-результатом.
-        /// Блокируем файл на время существования экземпляра.
-        /// </summary>
-        protected virtual Stream Target { get; private set; }
-
         private readonly object piecesDummy = new object();
         /// <summary>
         /// Коллекция с кусочками файла-результата
         /// </summary>
-        protected ICollection<IExtendedPieceOfResult> Pieces = new List<IExtendedPieceOfResult>();
+        protected ICollection<IStatusedPieceOfResult> Pieces = new List<IStatusedPieceOfResult>();
 
-        public OutputFile(string filePath)
+        public OutputFile(string inputFilePath)
+            : base(inputFilePath)
         {
-            this.Target = new FileStream(filePath, FileMode.Create, FileAccess.Write,
+            this.Body = new FileStream(inputFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None);
         }
 
         /// <summary>
-        /// Готов ли кусочек к записи в <see cref="Target"/>
+        /// Готов ли кусочек к записи в файл/>
         /// </summary>
         /// <param name="value">Кусочек файла-результата. Должен являться частью коллекции <see cref="Pieces"/></param>
         /// <returns>true если готов и false в противном случае</returns>
-        protected bool ReadyForWriting(IExtendedPieceOfResult value)
+        protected virtual bool ReadyForWriting(IStatusedPieceOfResult value)
         {
             bool result = false;
 
@@ -47,10 +42,10 @@ namespace SkillsTest.GZipTest.Core
 
                 //Условиями готовности кусочка к записи в файл являются:
                 //  1  Кусочек сам имеет соответствующий статус
-                if (value.Status == ExtendedPieceOfResultStatus.Ready)
+                if (value.Status == PieceOfResultStatusEnum.Ready)
                 {
                     //  2.1  Это первый кусочек
-                    if (value.InputStartIndex == 0)
+                    if (value.StartIndex == 0)
                     {
                         result = true;
                     }
@@ -59,8 +54,8 @@ namespace SkillsTest.GZipTest.Core
                     {
                         result = this.Pieces.Any(
                             x =>
-                                x.InputEndIndex == value.InputStartIndex &&
-                                (x.Status == ExtendedPieceOfResultStatus.Written || this.ReadyForWriting(x)));
+                                x.EndIndex == value.StartIndex &&
+                                (x.Status == PieceOfResultStatusEnum.Written || this.ReadyForWriting(x)));
                     }
                 }
             }
@@ -73,30 +68,27 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <remarks>Для оптимального расходования ресурсов необходимо чтобы кусочки попадали в файл в прямом порядке</remarks>
         /// <param name="value">Кусочек файла-результата</param>
-        public virtual void AddPiece(IPieceOfResult value)
+        public virtual void AddPiece(IStatusedPieceOfResult value)
         {
             lock (piecesDummy)
             {
-                this.Pieces.Add(new ExtendedPieceOfResult(value));
+                this.Pieces.Add(value);
 
-                var tmpReadyPieces = this.Pieces.Where(this.ReadyForWriting).OrderBy(x => x.InputStartIndex).ToList();
+                var tmpReadyPieces = this.Pieces.Where(this.ReadyForWriting).OrderBy(x => x.StartIndex).ToList();
+
+                if (tmpReadyPieces.Count == 0)
+                {
+                    var a = this.Pieces.OrderBy(x => x.StartIndex).ToList();
+                }
 
                 foreach (var currentPiece in tmpReadyPieces)
                 {
-                    var tmpResultArray = currentPiece.GetOutputBuffer();
-                    this.Target.Write(tmpResultArray, 0, tmpResultArray.Length);
-                    currentPiece.Status = ExtendedPieceOfResultStatus.Written;
+                    var tmpResultArray = currentPiece.GetBodyBuffer(true);
+                    this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
+                    currentPiece.Status = PieceOfResultStatusEnum.Written;
                 }
 
-                this.Target.Flush();
-            }
-        }
-
-        public virtual void Dispose()
-        {
-            if (this.Target != null)
-            {
-                this.Target.Dispose();
+                this.Body.Flush();
             }
         }
     }

@@ -5,10 +5,9 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public enum ExtendedPieceOfResultStatus
+    public enum ProjectFileTypeEnum
     {
         Unknown,
-        Ready,
-        Written
+        GZip
     }
 }
