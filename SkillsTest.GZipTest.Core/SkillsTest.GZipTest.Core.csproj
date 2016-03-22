@@ -40,26 +40,32 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\ConvertAsyncCompletedEventArgs.cs" />
-    <Compile Include="Classes\ExtendedPieceOfResult.cs" />
+    <Compile Include="Classes\ConvertProgressChangedEventArgs.cs" />
+    <Compile Include="Classes\InputFile.cs" />
+    <Compile Include="Classes\ProjectFile.cs" />
+    <Compile Include="Classes\StatusedPieceOfResult.cs" />
     <Compile Include="Classes\MrZipper.cs" />
     <Compile Include="Classes\OutputFile.cs" />
+    <Compile Include="Classes\PieceOf.cs" />
     <Compile Include="Classes\PieceOfResult.cs" />
-    <Compile Include="Classes\SourcePieces.cs" />
     <Compile Include="Classes\ThreadDictionary.cs" />
     <Compile Include="Delegates\ConvertEventHandler.cs" />
     <Compile Include="Delegates\ProgressChangedEventHandler.cs" />
-    <Compile Include="Enums\MrZipperStatusEnum.cs" />
-    <Compile Include="Enums\ExtendedPieceOfResultStatus.cs" />
+    <Compile Include="Enums\ProjectFileTypeEnum.cs" />
+    <Compile Include="Enums\ProjectStatusEnum.cs" />
+    <Compile Include="Enums\PieceOfResultStatusEnum.cs" />
     <Compile Include="Helpers\ProcessInfo.cs" />
-    <Compile Include="Helpers\StreamHelper.cs" />
-    <Compile Include="Helpers\StringHelper.cs" />
-    <Compile Include="Interfaces\IExtendedPieceOfResult.cs" />
+    <Compile Include="Interfaces\IInputFile.cs" />
+    <Compile Include="Interfaces\IPieceOfSource.cs" />
+    <Compile Include="Interfaces\IProjectFile.cs" />
+    <Compile Include="Interfaces\IStatusedPieceOfResult.cs" />
     <Compile Include="Interfaces\IMrZipper.cs" />
     <Compile Include="Interfaces\IOutputFile.cs" />
+    <Compile Include="Interfaces\IPieceOf.cs" />
     <Compile Include="Interfaces\IPieceOfResult.cs" />
     <Compile Include="Interfaces\IThreadDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Structs\PieceOfSource.cs" />
+    <Compile Include="Classes\PieceOfSource.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

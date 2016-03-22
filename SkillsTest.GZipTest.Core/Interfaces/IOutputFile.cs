@@ -5,12 +5,12 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public interface IOutputFile : IDisposable
+    public interface IOutputFile : IProjectFile
     {
         /// <summary>
-        /// Отвечает за псисоединение очередного кусочка к файлу-результату.
+        /// Отвечает за присоединение очередного кусочка к файлу-результату.
         /// </summary>
         /// <param name="value">Кусочек результата</param>
-        void AddPiece(IPieceOfResult value);
+        void AddPiece(IStatusedPieceOfResult value);
     }
 }

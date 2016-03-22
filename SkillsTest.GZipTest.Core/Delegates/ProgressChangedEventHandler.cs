@@ -7,5 +7,5 @@ using System.Text;
 namespace SkillsTest.GZipTest.Core
 {
     public delegate void ProgressChangedEventHandler(
-            ProgressChangedEventArgs e);
+            ConvertProgressChangedEventArgs e);
 }
