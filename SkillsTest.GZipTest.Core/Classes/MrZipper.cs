@@ -222,7 +222,7 @@ namespace SkillsTest.GZipTest.Core
         static MrZipper()
         {
             //В дальнейшем будем создавать по потоку на процессор
-            MrZipper.MaxThreads = (uint)Process.GetCurrentProcess().ProcessorAffinity;
+            MrZipper.MaxThreads = ProcessInfo.NumberOfProcessorThreads;
             if (MrZipper.MaxThreads == 0)
             {
                 MrZipper.MaxThreads = 1;

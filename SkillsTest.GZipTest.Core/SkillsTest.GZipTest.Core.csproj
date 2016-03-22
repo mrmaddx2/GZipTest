@@ -54,6 +54,7 @@
     <Compile Include="Enums\ProjectFileTypeEnum.cs" />
     <Compile Include="Enums\ProjectStatusEnum.cs" />
     <Compile Include="Enums\PieceOfResultStatusEnum.cs" />
+    <Compile Include="Helpers\ProcessInfo.cs" />
     <Compile Include="Interfaces\IInputFile.cs" />
     <Compile Include="Interfaces\IPieceOfSource.cs" />
     <Compile Include="Interfaces\IProjectFile.cs" />

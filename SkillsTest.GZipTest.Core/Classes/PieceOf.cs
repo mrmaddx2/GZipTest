@@ -59,10 +59,10 @@ namespace SkillsTest.GZipTest.Core
 
         protected virtual void ReleaseResources()
         {
-            if (this.Body.CanRead || this.Body.CanWrite)
+            if (this.Body != null)
             {
-                this.Body.Flush();
-                this.Body.Close();
+                this.Body.Dispose();
+                this.Body = null;
             }
         }
 
@@ -87,7 +87,7 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public MemoryStream GetBodyStream(bool cleanBodyAfter = false)
+        public MemoryStream GetBodyStream(bool cleanBodyAfter)
         {
             var result = new MemoryStream(this.Body.ToArray());
 
