@@ -16,7 +16,7 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Значение по умолчанию для размера фрагмента сжимаемых данных. Заполняется в статическом конструкторе
         /// </summary>
-        protected static uint DefaultFragmentSize;
+        public static uint DefaultFragmentSize;
 
         static InputFile()
         {
@@ -75,6 +75,8 @@ namespace SkillsTest.GZipTest.Core
                         "Укажите большее значение для размера блока данных операции сжатия. необходимо указать значение более {0}",
                         DefaultFragmentSize), "inputFragmentSize");
             }
+
+            //TODO: Помониторить профайлером сколько в среднем потоки ожидают считывания кусочка из файла. Особенно для Gzip
 
             lock (this.Body)
             {

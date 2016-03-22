@@ -83,7 +83,7 @@ namespace SkillsTest.GZipTest.Core
 
                     using (GZipStream compressedzipStream = new GZipStream(sourceStream, CompressionMode.Decompress, true))
                     {
-                        byte[] buffer = new byte[512000];
+                        byte[] buffer = new byte[InputFile.DefaultFragmentSize];
                         int nRead;
                         while ((nRead = compressedzipStream.Read(buffer, 0, buffer.Length)) > 0)
                         {
