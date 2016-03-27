@@ -88,9 +88,9 @@ namespace SkillsTest.GZipTest.Core
                         foreach (var current in this.sources)
                         {
                             source = current.Receive();
-                            if (source.Any())
+                            if (source != null)
                             {
-                                this.outputFile.AddPiece(new HashSet<PieceOf>(source));
+                                this.outputFile.AddPiece(source);
                                 this.ReportProgress(source.Sum(x => x.PercentOfSource), new object());
                                 break;
                             }

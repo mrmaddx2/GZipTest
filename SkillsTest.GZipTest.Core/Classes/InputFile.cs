@@ -24,7 +24,7 @@ namespace SkillsTest.GZipTest.Core
             DefaultFragmentSize = 512000;
         }
 
-        protected int currentSeqNo;
+        protected long currentSeqNo;
 
         public InputFile(string inputFilePath)
             : base(inputFilePath)
@@ -95,7 +95,7 @@ namespace SkillsTest.GZipTest.Core
                         setStreamPosition = this.Body.Position;
                     }
 
-                    result = new PieceOf(currentSeqNo);
+                    result = new PieceOf((ulong)currentSeqNo);
 
                     //Нужно отщипнуть кусочек необходимомго размера
 

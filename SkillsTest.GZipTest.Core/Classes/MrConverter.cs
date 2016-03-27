@@ -133,6 +133,7 @@ namespace SkillsTest.GZipTest.Core
                                     break;
                             }
 
+                            source.Status = PieceOfResultStatusEnum.Ready;
                             this.AddToBuffer(source);
                             break;
                         }

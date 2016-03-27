@@ -8,11 +8,11 @@ namespace SkillsTest.GZipTest.Core
 {
     public class PieceOf
     {
-        //public PieceOfResultStatusEnum Status { get; set; }
+        public PieceOfResultStatusEnum Status { get; set; }
 
         protected MemoryStream Body { get; set; }
 
-        public int SeqNo { get; protected set; }
+        public ulong SeqNo { get; protected set; }
         public decimal PercentOfSource { get; set; }
 
         public virtual long Length()
@@ -20,7 +20,7 @@ namespace SkillsTest.GZipTest.Core
             return this.Body.Length;
         }
 
-        public PieceOf(int seqNo)
+        public PieceOf(ulong seqNo)
         {
             this.Body = new MemoryStream();
             this.SeqNo = seqNo;
@@ -93,16 +93,6 @@ namespace SkillsTest.GZipTest.Core
         public virtual void Dispose()
         {
             this.ReleaseResources();
-        }
-
-        public override int GetHashCode()
-        {
-            return this.SeqNo;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is PieceOf && (obj as PieceOf).SeqNo == this.SeqNo;
         }
     }
 }
