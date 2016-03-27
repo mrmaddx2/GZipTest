@@ -49,11 +49,11 @@ namespace SkillsTest.GZipTest.App
 
                 if (string.Equals(mode, "compress", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    zipper.CompressAsync(input, output, fragmentSize);
+                    zipper.ConvertAsync(input, output, CompressionMode.Compress, fragmentSize);
                 }
                 else if (string.Equals(mode, "decompress", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    zipper.DecompressAsync(input, output);
+                    zipper.ConvertAsync(input, output, CompressionMode.Decompress, fragmentSize);
                 }
                 else
                 {
@@ -82,7 +82,7 @@ namespace SkillsTest.GZipTest.App
             }
         }
 
-        private static void ZipperOnConvertAsyncCompleted(ConvertAsyncCompletedEventArgs e)
+        private static void ZipperOnConvertAsyncCompleted(AsyncCompletedEventArgs e)
         {
             int exitCode = Environment.ExitCode;
 

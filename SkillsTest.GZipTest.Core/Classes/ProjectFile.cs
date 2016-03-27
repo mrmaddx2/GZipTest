@@ -13,19 +13,9 @@ namespace SkillsTest.GZipTest.Core
         /// Блокируем файл на время существования экземпляра.
         /// </summary>
         protected virtual FileStream Body { get; set; }
-        public virtual long Length
+        public long Length()
         {
-            get
-            {
-                if (this.Body != null)
-                {
-                    return this.Body.Length;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
+            return this.Body.Length;
         }
 
         public ProjectFile(string inputFilePath)
@@ -33,27 +23,7 @@ namespace SkillsTest.GZipTest.Core
             
         }
 
-        public virtual ProjectFileTypeEnum FileType
-        {
-            get { return ProjectFileTypeEnum.Unknown; }
-            protected set { }
-        }
-
-        public virtual ProjectStatusEnum Status
-        {
-            get
-            {
-                if (this.Body != null)
-                {
-                    if (this.Body.Position == this.Body.Length)
-                    {
-                        return ProjectStatusEnum.Done;
-                    }
-                }
-
-                return ProjectStatusEnum.Unknown;
-            }
-        }
+        public abstract ProjectFileTypeEnum FileType { get; protected set; }
 
         public virtual void Dispose()
         {
