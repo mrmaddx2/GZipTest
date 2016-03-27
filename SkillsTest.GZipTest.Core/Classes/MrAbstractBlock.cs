@@ -40,7 +40,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        protected virtual void AddToBuffer(PieceOf value)
+        protected void AddToBuffer(PieceOf value)
         {
             lock ((buffer as ICollection).SyncRoot)
             {
@@ -53,7 +53,7 @@ namespace SkillsTest.GZipTest.Core
         {
             lock ((buffer as ICollection).SyncRoot)
             {
-                var tmpValue = this.buffer.ToList().AsQueryable();
+                var tmpValue = this.buffer.AsQueryable();
 
                 tmpValue = tmpValue.OrderBy(x => x.SeqNo);
 
@@ -62,12 +62,14 @@ namespace SkillsTest.GZipTest.Core
                     tmpValue = tmpValue.Take((int)count);
                 }
 
-                foreach (var current in tmpValue)
+                var tmpResult = tmpValue.ToList();
+
+                foreach (var current in tmpResult)
                 {
                     this.buffer.Remove(current);
                 }
 
-                return tmpValue.ToList();
+                return tmpResult;
             }
         }
 
@@ -86,7 +88,7 @@ namespace SkillsTest.GZipTest.Core
                 }
             }
 
-            return exception;
+            return result;
         }
 
 
@@ -134,7 +136,7 @@ namespace SkillsTest.GZipTest.Core
         {
             lock ((this.targets as ICollection).SyncRoot)
             {
-                if (!this.targets.Contains(value))
+                if (this.targets.Contains(value))
                 {
                     this.targets.Remove(value);
                     value.RemoveSource(this);
@@ -159,7 +161,7 @@ namespace SkillsTest.GZipTest.Core
         {
             lock ((this.sources as ICollection).SyncRoot)
             {
-                if (!this.sources.Contains(value))
+                if (this.sources.Contains(value))
                 {
                     this.sources.Remove(value);
                     value.RemoveTarget(this);
@@ -177,9 +179,11 @@ namespace SkillsTest.GZipTest.Core
 
             foreach (var current in this.sources.ToList())
             {
-                current.RemoveSource(this);
+                current.RemoveTarget(this);
             }
             this.sources.Clear();
+
+            this.buffer.Clear();
         }
     }
 }

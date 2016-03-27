@@ -11,10 +11,12 @@ namespace SkillsTest.GZipTest.Core
 {
     public class OutputFile : ProjectFile
     {
+        private readonly object piecesDummy = new object();
         /// <summary>
         /// Коллекция с кусочками файла-результата
         /// </summary>
-        protected List<PieceOf> Pieces = new List<PieceOf>();
+        protected HashSet<PieceOf> Pieces = new HashSet<PieceOf>();
+        protected int LastWrittenSeqNo { get; set; }
 
         public override ProjectFileTypeEnum FileType
         {
@@ -34,35 +36,25 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="value">Кусочек файла-результата. Должен являться частью коллекции <see cref="Pieces"/></param>
         /// <returns>true если готов и false в противном случае</returns>
-        protected virtual bool ReadyForWriting(PieceOf value)
+        protected bool ReadyForWriting(PieceOf value)
         {
             bool result = false;
 
-            lock ((Pieces as ICollection).SyncRoot)
+            lock (this.piecesDummy)
             {
-                if (!this.Pieces.Contains(value))
-                {
-                    throw new ArgumentException(
-                        "Переданный в качестве значения параметра кусочек не является частью файла-результата.", "value");
-                }
-
                 //Условиями готовности кусочка к записи в файл являются:
-                //  1  Кусочек сам имеет соответствующий статус
-                if (value.Status == PieceOfResultStatusEnum.Ready)
+                //  2.1  Это первый кусочек
+                if (this.LastWrittenSeqNo == value.SeqNo - 1 && value.SeqNo == this.Pieces.Min(x => x.SeqNo))
                 {
-                    //  2.1  Это первый кусочек
-                    if (value.SeqNo == 0)
-                    {
-                        result = true;
-                    }
-                    //  2.2  Или все предыдущие кусочки уже находятся в коллекции и либо уже записаны в файл, либо готовы к записи.
-                    else
-                    {
-                        result = this.Pieces.Any(
-                            x =>
-                                x.SeqNo + 1 == value.SeqNo &&
-                                (x.Status == PieceOfResultStatusEnum.Written || this.ReadyForWriting(x)));
-                    }
+                    result = true;
+                }
+                //  2.2  Или все предыдущие кусочки уже находятся в коллекции и либо уже записаны в файл, либо готовы к записи.
+                else
+                {
+                    result =
+                        this.Pieces.Any(
+                        x => x.SeqNo + 1 == value.SeqNo &&
+                             ReadyForWriting(x));
                 }
             }
 
@@ -76,23 +68,31 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="value">Кусочек файла-результата</param>
         public virtual void AddPiece(PieceOf value)
         {
-            this.AddPiece(new List<PieceOf>(){value});
+            this.AddPiece(new HashSet<PieceOf>(){value});
         }
 
-        public virtual void AddPiece(ICollection<PieceOf> value)
+        public virtual void AddPiece(HashSet<PieceOf> value)
         {
-            lock ((Pieces as ICollection).SyncRoot)
+            lock (this.piecesDummy)
             {
-                this.Pieces.AddRange(value);
+                this.Pieces.UnionWith(value);
 
-                var tmpReadyPieces = this.Pieces.Where(this.ReadyForWriting).OrderBy(x => x.SeqNo).ToList();
+                var tmpReadyPieces = this.Pieces.Where(ReadyForWriting).OrderBy(x => x.SeqNo).ToList();
 
-                foreach (var currentPiece in tmpReadyPieces)
+                if (tmpReadyPieces.Any())
                 {
-                    var tmpResultArray = currentPiece.GetBodyBuffer(true);
-                    this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
-                    currentPiece.Status = PieceOfResultStatusEnum.Written;
+                    foreach (var currentPiece in tmpReadyPieces)
+                    {
+                        var tmpResultArray = currentPiece.GetBodyBuffer(true);
+                        this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
+                    }
+
+                    this.Pieces.RemoveWhere(x => tmpReadyPieces.Contains(x));
+
+                    this.LastWrittenSeqNo = tmpReadyPieces.Max(x => x.SeqNo);
                 }
+
+                
 
                 this.Body.Flush();
             }

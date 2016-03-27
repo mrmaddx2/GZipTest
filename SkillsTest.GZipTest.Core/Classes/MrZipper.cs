@@ -76,13 +76,9 @@ namespace SkillsTest.GZipTest.Core
 
         private void ResultOnConvertAsyncCompleted(object sender, AsyncCompletedEventArgs e)
         {
-            this.OnConvertAsyncCompleted(e);
+            (sender as MrTarget).Dispose();
 
-            var a = (sender as MrTarget);
-        }
-
-        public void Dispose()
-        {
+            this.OnConvertAsyncCompleted(e);            
         }
     }
 }
