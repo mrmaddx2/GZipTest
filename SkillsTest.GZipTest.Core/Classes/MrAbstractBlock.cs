@@ -9,9 +9,9 @@ namespace SkillsTest.GZipTest.Core
 {
     public abstract class MrAbstractBlock : IDisposable
     {
-        protected ICollection<MrAbstractBlock> sources = new List<MrAbstractBlock>();
-        protected ICollection<MrAbstractBlock> targets = new List<MrAbstractBlock>();
-        protected ICollection<PieceOf> buffer = new List<PieceOf>();
+        private ICollection<MrAbstractBlock> sources = new List<MrAbstractBlock>();
+        private ICollection<MrAbstractBlock> targets = new List<MrAbstractBlock>();
+        protected SortedDictionary<int, PieceOf> buffer = new SortedDictionary<int, PieceOf>();
 
         private ProjectStatusEnum status;
         private readonly object statusDummy = new object();
@@ -44,32 +44,55 @@ namespace SkillsTest.GZipTest.Core
         {
             lock ((buffer as ICollection).SyncRoot)
             {
-                this.buffer.Add(value);
+                this.buffer.Add(value.GetHashCode(), value);
             }
         }
 
-
-        public ICollection<PieceOf> Receive(uint? count = null)
+        public SortedDictionary<int, PieceOf> ReadFromSources(uint count = 1)
         {
+            var result = new SortedDictionary<int, PieceOf>();
+
+            try
+            {
+                foreach (var currentSource in sources)
+                {
+                    foreach (var currentPieceItem in currentSource.Receive(Convert.ToUInt32(count - result.Count)))
+                    {
+                        result.Add(currentPieceItem.Key, currentPieceItem.Value);
+                    }
+
+                    if (result.Count >= count)
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (Exception exception)
+            {
+                this.PostError(exception);
+            }
+
+            return result;
+        }
+
+        public SortedDictionary<int, PieceOf> Receive(uint count = 1)
+        {
+            var result = new SortedDictionary<int, PieceOf>();
+
             lock ((buffer as ICollection).SyncRoot)
             {
-                var tmpValue = this.buffer.ToList().AsQueryable();
-
-                tmpValue = tmpValue.OrderBy(x => x.SeqNo);
-
-                if (count != null)
+                foreach (var current in this.buffer.Take((int)count).ToList())
                 {
-                    tmpValue = tmpValue.Take((int)count);
+                    this.buffer.Remove(current.Key);
+                    result.Add(current.Key, current.Value);
                 }
 
-                foreach (var current in tmpValue)
-                {
-                    this.buffer.Remove(current);
-                }
-
-                return tmpValue.ToList();
+                return result;
             }
         }
+
+
+        protected abstract void Start();
 
 
         protected virtual Exception PostError(Exception exception)
@@ -90,11 +113,49 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
+        private readonly object allSourcesDoneDummy = new object();
+        protected bool AllSourcesDone
+        {
+            get
+            {
+                lock (allSourcesDoneDummy)
+                {
+                    return this.sources.All(x => x.Status == ProjectStatusEnum.Done);
+                }
+            }
+        }
+
+
+        private readonly object postStartDummy = new object();
+        protected ProjectStatusEnum PostStart()
+        {
+            lock (postStartDummy)
+            {
+                if (this.Status == ProjectStatusEnum.Unknown)
+                {
+                    this.Start();
+                }
+
+                foreach (var currentTarget in targets)
+                {
+                    currentTarget.Start();
+                }
+
+                foreach (var currentSource in sources)
+                {
+                    currentSource.Start();
+                }
+
+                return this.Status;
+            }
+        }
+
+
         protected virtual ProjectStatusEnum PostDone()
         {
             try
             {
-                if (this.sources.All(x => x.Status == ProjectStatusEnum.Done))
+                if (AllSourcesDone)
                 {
                     if (this.Status == ProjectStatusEnum.InProgress)
                     {

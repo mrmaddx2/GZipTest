@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace SkillsTest.GZipTest.Core
 {
@@ -25,17 +26,39 @@ namespace SkillsTest.GZipTest.Core
             {
                 this.inputFile = new InputFile(value);
 
-                this.Status = ProjectStatusEnum.InProgress;
-
-                FillingActionHandler fillingAction = this.Filling;
-
-                this.Status = ProjectStatusEnum.InProgress;
-
-                fillingAction.BeginInvoke(null, null);
+                this.Start();
             }
             catch (Exception exception)
             {
                 throw new Exception(string.Format("Блок чтения данных из файла {0}", value), exception);
+            }
+        }
+
+
+        private readonly object startDummy = new object();
+        protected override void Start()
+        {
+            lock (startDummy)
+            {
+                try
+                {
+                    if (this.Status != ProjectStatusEnum.Unknown)
+                    {
+                        return;
+                    }
+
+                    this.Status = ProjectStatusEnum.InProgress;
+
+                    FillingActionHandler fillingAction = this.Filling;
+
+                    fillingAction.BeginInvoke(null, null);
+
+                    this.PostStart();
+                }
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
+                }
             }
         }
 
@@ -50,7 +73,10 @@ namespace SkillsTest.GZipTest.Core
                     this.AddToBuffer(newPiece);
                 }
 
-                this.PostDone();
+                if (this.PostDone() != ProjectStatusEnum.Done)
+                {
+                    throw new InvalidAsynchronousStateException(string.Format("После окончания считывания статус не был переведен в {0}", ProjectStatusEnum.Done));
+                }
             }
             catch (Exception exception)
             {

@@ -37,10 +37,9 @@ namespace SkillsTest.GZipTest.Core
             {
                 string key = value.UserSuppliedState.ToString();
 
-                var operation = this[key];
-
-                if (operation != null)
+                if (this.ContainsKey(key))
                 {
+                    var operation = this[key];
                     operation.OperationCompleted();
                     this.Remove(key);
                 }

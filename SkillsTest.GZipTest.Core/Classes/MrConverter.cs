@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -13,12 +14,16 @@ namespace SkillsTest.GZipTest.Core
     {
         #region Delegates
         protected delegate void ConvertPiecesActionHandler(
-            CompressionMode compressionMode, long? fragmentSize = null);
+            AsyncOperation operation);
         #endregion
 
-        public MrConverter(CompressionMode mode, long? compressFragmentSize = null)
+        protected ThreadDictionary ThreadDictionary = new ThreadDictionary();
+
+        private readonly CompressionMode mode;
+
+        public MrConverter(CompressionMode inputMode)
         {
-            ConvertAsync(mode, compressFragmentSize);
+            this.mode = inputMode;
         }
 
 
@@ -29,33 +34,44 @@ namespace SkillsTest.GZipTest.Core
             MaxThreads = ProcessInfo.NumberOfProcessorThreads;
         }
 
-        private readonly object convertAsyncDummy = new object();
-        protected void ConvertAsync(CompressionMode mode, long? compressFragmentSize = null)
+        private readonly object startDummy = new object();
+        protected override void Start()
         {
-            try
+            lock (startDummy)
             {
-                lock (convertAsyncDummy)
+                try
                 {
+                    if (this.Status != ProjectStatusEnum.Unknown)
+                    {
+                        return;
+                    }
+
                     this.Status = ProjectStatusEnum.InProgress;
 
                     for (int i = 0; i <= MaxThreads - 1; i++)
                     {
+                        var threadKey = Guid.NewGuid().ToString();
+
+                        var currentOperation = AsyncOperationManager.CreateOperation(threadKey);
+
+                        this.ThreadDictionary.Add(threadKey, currentOperation);
+
                         ConvertPiecesActionHandler convertPiecesAction = ConvertPieces;
                         convertPiecesAction.BeginInvoke(
-                            mode,
-                            compressFragmentSize,
+                            currentOperation,
                             null,
                             null);
                     }
+
+                    this.PostStart();
+                }
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
                 }
             }
-            catch (Exception exception)
-            {
-                this.PostError(exception);
-            }
-
-            
         }
+
 
         /// <summary> 
         /// Упаковывает связанный с данным классом фрагмент файла и записывает результат в новый файл на диск.
@@ -89,11 +105,9 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
-                var sourceStream = PieceOfSource.GetBodyStream(true);
-
-                using (GZipStream compressedzipStream = new GZipStream(sourceStream, CompressionMode.Decompress, true))
+                using (GZipStream compressedzipStream = new GZipStream(PieceOfSource.GetBodyStream(true), CompressionMode.Decompress, true))
                 {
-                    byte[] buffer = new byte[InputFile.DefaultFragmentSize];
+                    byte[] buffer = new byte[512000];
                     int nRead;
                     while ((nRead = compressedzipStream.Read(buffer, 0, buffer.Length)) > 0)
                     {
@@ -111,37 +125,31 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        private void ConvertPieces(CompressionMode mode, long? compressFragmentSize = null)
+        private void ConvertPieces(AsyncOperation operation)
         {
             try
             {
                 while (this.Status == ProjectStatusEnum.InProgress)
                 {
-                    PieceOf source = null;
-                    foreach (var current in sources)
+                    var source = this.ReadFromSources().Values.FirstOrDefault();
+                    if (source != null)
                     {
-                        source = current.Receive(1).FirstOrDefault();
-                        if (source != null)
+                        switch (mode)
                         {
-                            switch (mode)
-                            {
-                                case CompressionMode.Compress:
-                                    this.Compress(source);
-                                    break;
-                                case CompressionMode.Decompress:
-                                    this.Decompress(source);
-                                    break;
-                            }
-
-                            source.Status = PieceOfResultStatusEnum.Ready;
-                            this.AddToBuffer(source);
-                            break;
+                            case CompressionMode.Compress:
+                                this.Compress(source);
+                                break;
+                            case CompressionMode.Decompress:
+                                this.Decompress(source);
+                                break;
                         }
+
+                        this.AddToBuffer(source);
                     }
 
                     if (source == null)
                     {
-                        if (this.PostDone() != ProjectStatusEnum.Done)
+                        if (this.PostDone(operation) != ProjectStatusEnum.Done)
                         {
                             Thread.Sleep(100);
                         }
@@ -152,6 +160,24 @@ namespace SkillsTest.GZipTest.Core
             {
                 this.PostError(exception);
             }
+        }
+
+        protected ProjectStatusEnum PostDone(AsyncOperation operation)
+        {
+            lock (this.ThreadDictionary.SyncRoot)
+            {
+                if (AllSourcesDone)
+                {
+                    if (this.ThreadDictionary.SafeIamTheLast(operation))
+                    {
+                        return base.PostDone();
+                    }
+
+                    this.ThreadDictionary.SafeRemoveAndComplete(operation);
+                }
+            }
+
+            return this.Status;
         }
     }
 }

@@ -62,21 +62,41 @@ namespace SkillsTest.GZipTest.Core
         public MrTarget(string value)
         {
             this.outputFile = new OutputFile(value);
+        }
 
-            this.Status = ProjectStatusEnum.InProgress;
-            AsyncOpStartDttm = DateTime.Now;
+        private readonly object startDummy = new object();
+        protected override void Start()
+        {
+            lock (startDummy)
+            {
+                try
+                {
+                    if (this.Status != ProjectStatusEnum.Unknown)
+                    {
+                        return;
+                    }
 
-            ConvertPiecesActionHandler convertPiecesAction = WriteAsync;
-            convertPiecesAction.BeginInvoke(
-                null,
-                null);
+                    this.Status = ProjectStatusEnum.InProgress;
+                    AsyncOpStartDttm = DateTime.Now;
+
+                    ConvertPiecesActionHandler convertPiecesAction = WriteAsync;
+                    convertPiecesAction.BeginInvoke(
+                        null,
+                        null);
+
+                    this.PostStart();
+                }
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
+                }
+            }
         }
 
 
         private readonly object convertAsyncDummy = new object();
         protected void WriteAsync()
         {
-            Exception e = null;
             try
             {
                 lock (convertAsyncDummy)
@@ -84,19 +104,14 @@ namespace SkillsTest.GZipTest.Core
                     
                     while (this.Status == ProjectStatusEnum.InProgress)
                     {
-                        ICollection<PieceOf> source = null;
-                        foreach (var current in this.sources)
+                        var source = this.ReadFromSources(5);
+                        if (source.Any())
                         {
-                            source = current.Receive();
-                            if (source != null)
-                            {
-                                this.outputFile.AddPiece(source);
-                                this.ReportProgress(source.Sum(x => x.PercentOfSource), new object());
-                                break;
-                            }
+                            this.outputFile.AddPiece(source);
+                            this.ReportProgress(source.Values.Sum(x => x.PercentOfSource), new object());
                         }
 
-                        if (source == null || !source.Any())
+                        if (!source.Any())
                         {
                             if (this.PostDone() != ProjectStatusEnum.Done)
                             {
@@ -108,15 +123,7 @@ namespace SkillsTest.GZipTest.Core
             }
             catch (Exception exception)
             {
-                e = exception;
-                
-            }
-            finally
-            {
-                if (e != null)
-                {
-                    this.PostError(e);
-                }
+                this.PostError(exception);
             }
         }
 

@@ -17,14 +17,14 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Значение по умолчанию для размера фрагмента сжимаемых данных. Заполняется в статическом конструкторе
         /// </summary>
-        public static uint DefaultFragmentSize;
+        protected static uint DefaultFragmentSize;
 
         static InputFile()
         {
             DefaultFragmentSize = 512000;
         }
 
-        protected long currentSeqNo;
+        protected int currentSeqNo;
 
         public InputFile(string inputFilePath)
             : base(inputFilePath)
@@ -95,7 +95,7 @@ namespace SkillsTest.GZipTest.Core
                         setStreamPosition = this.Body.Position;
                     }
 
-                    result = new PieceOf((ulong)currentSeqNo);
+                    result = new PieceOf(currentSeqNo);
 
                     //Нужно отщипнуть кусочек необходимомго размера
 

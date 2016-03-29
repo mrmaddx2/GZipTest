@@ -6,15 +6,19 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace SkillsTest.GZipTest.Core
 {
     public class OutputFile : ProjectFile
     {
+        private readonly object piecesDummy = new object();
         /// <summary>
         /// Коллекция с кусочками файла-результата
         /// </summary>
-        protected List<PieceOf> Pieces = new List<PieceOf>();
+        protected SortedDictionary<int, PieceOf> Pieces = new SortedDictionary<int, PieceOf>();
+
+        protected int LastWrittenSeqNo;
 
         public override ProjectFileTypeEnum FileType
         {
@@ -27,46 +31,7 @@ namespace SkillsTest.GZipTest.Core
         {
             this.Body = new FileStream(inputFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None);
-        }
-
-        /// <summary>
-        /// Готов ли кусочек к записи в файл/>
-        /// </summary>
-        /// <param name="value">Кусочек файла-результата. Должен являться частью коллекции <see cref="Pieces"/></param>
-        /// <returns>true если готов и false в противном случае</returns>
-        protected virtual bool ReadyForWriting(PieceOf value)
-        {
-            bool result = false;
-
-            lock ((Pieces as ICollection).SyncRoot)
-            {
-                if (!this.Pieces.Contains(value))
-                {
-                    throw new ArgumentException(
-                        "Переданный в качестве значения параметра кусочек не является частью файла-результата.", "value");
-                }
-
-                //Условиями готовности кусочка к записи в файл являются:
-                //  1  Кусочек сам имеет соответствующий статус
-                if (value.Status == PieceOfResultStatusEnum.Ready)
-                {
-                    //  2.1  Это первый кусочек
-                    if (value.SeqNo == 0)
-                    {
-                        result = true;
-                    }
-                    //  2.2  Или все предыдущие кусочки уже находятся в коллекции и либо уже записаны в файл, либо готовы к записи.
-                    else
-                    {
-                        result = this.Pieces.Any(
-                            x =>
-                                x.SeqNo + 1 == value.SeqNo &&
-                                (x.Status == PieceOfResultStatusEnum.Written || this.ReadyForWriting(x)));
-                    }
-                }
-            }
-
-            return result;
+            this.LastWrittenSeqNo = -1;
         }
 
         /// <summary>
@@ -74,27 +39,48 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <remarks>Для оптимального расходования ресурсов необходимо чтобы кусочки попадали в файл в прямом порядке</remarks>
         /// <param name="value">Кусочек файла-результата</param>
-        public virtual void AddPiece(PieceOf value)
+        public virtual void AddPiece(SortedDictionary<int, PieceOf> value)
         {
-            this.AddPiece(new List<PieceOf>(){value});
-        }
-
-        public virtual void AddPiece(ICollection<PieceOf> value)
-        {
-            lock ((Pieces as ICollection).SyncRoot)
+            if (value == null || value.Count == 0)
             {
-                this.Pieces.AddRange(value);
+                return;
+            }
 
-                var tmpReadyPieces = this.Pieces.Where(this.ReadyForWriting).OrderBy(x => x.SeqNo).ToList();
-
-                foreach (var currentPiece in tmpReadyPieces)
+            lock (piecesDummy)
+            {
+                if (value.ContainsKey(this.LastWrittenSeqNo + 1))
                 {
-                    var tmpResultArray = currentPiece.GetBodyBuffer(true);
-                    this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
-                    currentPiece.Status = PieceOfResultStatusEnum.Written;
+                    PieceOf nextPiece;
+                    do
+                    {
+                        nextPiece = null;
+
+                        Interlocked.Increment(ref this.LastWrittenSeqNo);
+
+                        if (!value.TryGetValue(this.LastWrittenSeqNo, out nextPiece))
+                        {
+                            if (this.Pieces.TryGetValue(this.LastWrittenSeqNo, out nextPiece))
+                            {
+                                this.Pieces.Remove(this.LastWrittenSeqNo);
+                            }
+                        }
+
+                        if (nextPiece != null)
+                        {
+                            var tmpResultArray = nextPiece.GetBodyBuffer(true);
+                            this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
+                        }
+
+                        
+                    } while (nextPiece != null);
+
+                    this.Body.Flush();
                 }
 
-                this.Body.Flush();
+                foreach (var currentKey in value.Keys.Where(x => x > this.LastWrittenSeqNo))
+                {
+                    this.Pieces.Add(currentKey, value[currentKey]);
+                }
             }
         }
     }
