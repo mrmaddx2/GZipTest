@@ -5,7 +5,7 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public interface IPieceOfSource : IPieceOf
+    public class SourceBlock
     {
         
     }

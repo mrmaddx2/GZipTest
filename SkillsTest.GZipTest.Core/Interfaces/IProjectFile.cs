@@ -7,8 +7,7 @@ namespace SkillsTest.GZipTest.Core
 {
     public interface IProjectFile : IDisposable
     {
-        long Length { get; }
+        long Length();
         ProjectFileTypeEnum FileType { get; }
-        ProjectStatusEnum Status { get; }
     }
 }

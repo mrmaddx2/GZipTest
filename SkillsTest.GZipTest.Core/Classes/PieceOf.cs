@@ -6,38 +6,23 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public abstract class PieceOf : IPieceOf
+    public class PieceOf
     {
-        protected virtual MemoryStream Body { get; set; }
 
-        public long StartIndex { get; protected set; }
+        protected MemoryStream Body { get; set; }
 
-        public virtual long Length
+        public int SeqNo { get; protected set; }
+        public decimal PercentOfSource { get; set; }
+
+        public virtual long Length()
         {
-            get
-            {
-                if (this.Body != null && Body.CanRead)
-                {
-                    return this.Body.Length;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            protected set { }
+            return this.Body.Length;
         }
 
-        public virtual long EndIndex
-        {
-            get { return this.StartIndex + this.Length; }
-            protected set { }
-        }
-
-        protected PieceOf(long startIndex)
+        public PieceOf(int seqNo)
         {
             this.Body = new MemoryStream();
-            this.StartIndex = startIndex;
+            this.SeqNo = seqNo;
         }
 
         /// <summary>
@@ -76,32 +61,49 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
+                if (this.Body == null)
+                {
+                    ResetBody(new MemoryStream());
+                }
+
                 this.Body.Position = this.Body.Length;
                 this.Body.Write(value, offset, count);
             }
             catch (Exception exception)
             {
                 throw new Exception(
-                    string.Format("Добавление данных к результату кусочка {0}-{1}", this.StartIndex, this.EndIndex),
+                    string.Format("Добавление данных к телу кусочка {0}", this.SeqNo),
                     exception);
             }
         }
 
+        public void ResetBody(MemoryStream value)
+        {
+            this.Body = value;
+
+            this.Body.Position = 0;
+        }
+
         public MemoryStream GetBodyStream(bool cleanBodyAfter)
         {
-            var result = new MemoryStream(this.Body.ToArray());
-
-            if (cleanBodyAfter)
-            {
-                ReleaseResources();
-            }
-
-            return result;
+            return new MemoryStream(GetBodyBuffer(cleanBodyAfter)) {Position = 0};
         }
 
         public virtual void Dispose()
         {
             this.ReleaseResources();
+        }
+
+        public override int GetHashCode()
+        {
+            return this.SeqNo;
+        }
+
+        public override bool Equals(object obj)
+        {
+            var tmp = obj as PieceOf;
+
+            return tmp != null && tmp.GetHashCode() == this.GetHashCode();
         }
     }
 }

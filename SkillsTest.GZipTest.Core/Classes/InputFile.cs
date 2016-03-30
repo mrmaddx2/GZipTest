@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class InputFile : ProjectFile, IInputFile
+    public class InputFile : ProjectFile
     {
         /// <summary>
         /// Значение-костыль, являющееся по совместительству магическим числом для gz формата
@@ -16,17 +17,20 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Значение по умолчанию для размера фрагмента сжимаемых данных. Заполняется в статическом конструкторе
         /// </summary>
-        public static uint DefaultFragmentSize;
+        protected static uint DefaultFragmentSize;
 
         static InputFile()
         {
             DefaultFragmentSize = 512000;
         }
 
+        protected int currentSeqNo;
+
         public InputFile(string inputFilePath)
             : base(inputFilePath)
         {
             this.Body = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            this.currentSeqNo = 0;
 
             var prevPosition = this.Body.Position;
 
@@ -53,7 +57,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="inputFragmentSize">Размер буфера при считывании</param>
         /// <returns>Фрагмент файла-источника или null если все обработаны</returns>
-        public virtual IPieceOfSource Fetch(long? inputFragmentSize = null)
+        public virtual PieceOf Fetch(long? inputFragmentSize = null)
         {
             return this.Fetch(inputFragmentSize, null);
         }
@@ -64,7 +68,7 @@ namespace SkillsTest.GZipTest.Core
         /// <param name="inputFragmentSize">Размер буфера при считывании</param>
         /// <param name="setStreamPosition">Позиция в потоке источника на которую необходимо перейти перед началом считывания</param>
         /// <returns>Фрагмент файла-источника или null если все обработаны</returns>
-        public virtual IPieceOfSource Fetch(long? inputFragmentSize = null, long? setStreamPosition = null)
+        public virtual PieceOf Fetch(long? inputFragmentSize = null, long? setStreamPosition = null)
         {
             var fragmentSize = inputFragmentSize ?? DefaultFragmentSize;
 
@@ -76,11 +80,10 @@ namespace SkillsTest.GZipTest.Core
                         DefaultFragmentSize), "inputFragmentSize");
             }
 
-            //TODO: Помониторить профайлером сколько в среднем потоки ожидают считывания кусочка из файла. Особенно для Gzip
 
             lock (this.Body)
             {
-                PieceOfSource result = null;
+                PieceOf result = null;
                 try
                 {
                     if (setStreamPosition != null)
@@ -92,7 +95,7 @@ namespace SkillsTest.GZipTest.Core
                         setStreamPosition = this.Body.Position;
                     }
 
-                    result = new PieceOfSource((long)setStreamPosition);
+                    result = new PieceOf(currentSeqNo);
 
                     //Нужно отщипнуть кусочек необходимомго размера
 
@@ -165,8 +168,12 @@ namespace SkillsTest.GZipTest.Core
                     }
                 }
 
-                if (result.Length > 0)
+                var tmpLength = result.Length();
+                if (tmpLength > 0)
                 {
+                    Interlocked.Increment(ref this.currentSeqNo);
+                    result.PercentOfSource =
+                        Convert.ToDecimal(tmpLength) / Convert.ToDecimal(this.Length()) * 100;
                     return result;
                 }
                 else
