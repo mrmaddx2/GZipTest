@@ -67,6 +67,8 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
+                Thread.CurrentThread.Priority = ThreadPriority.Normal;
+
                 PieceOf newPiece;
                 while ((newPiece = this.inputFile.Fetch(inputFragmentSize: null)) != null && this.Status == ProjectStatusEnum.InProgress)
                 {

@@ -18,7 +18,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         protected SortedDictionary<int, PieceOf> Pieces = new SortedDictionary<int, PieceOf>();
 
-        protected int LastWrittenSeqNo;
+        public int LastWrittenSeqNo;
 
         public override ProjectFileTypeEnum FileType
         {
@@ -32,6 +32,18 @@ namespace SkillsTest.GZipTest.Core
             this.Body = new FileStream(inputFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None);
             this.LastWrittenSeqNo = 0;
+        }
+
+        public virtual void AddPiece(HashSet<PieceOf> value)
+        {
+            var tmp = new SortedDictionary<int, PieceOf>();
+
+            foreach (var current in value)
+            {
+                tmp.Add(current.SeqNo, current);
+            }
+
+            this.AddPiece(tmp);
         }
 
         /// <summary>

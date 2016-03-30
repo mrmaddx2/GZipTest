@@ -76,11 +76,13 @@ namespace SkillsTest.GZipTest.Core
                         return;
                     }
 
+                    
+
                     this.Status = ProjectStatusEnum.InProgress;
                     AsyncOpStartDttm = DateTime.Now;
 
                     ConvertPiecesActionHandler convertPiecesAction = WriteAsync;
-                    convertPiecesAction.BeginInvoke(
+                    var a = convertPiecesAction.BeginInvoke(
                         null,
                         null);
 
@@ -101,15 +103,18 @@ namespace SkillsTest.GZipTest.Core
             {
                 lock (convertAsyncDummy)
                 {
-                    
+                    Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+
                     while (this.Status == ProjectStatusEnum.InProgress)
                     {
-                        var source = this.ReadFromSources(5);
+                        var source = this.ReadFromSources(10);
                         if (source.Any())
                         {
                             this.outputFile.AddPiece(source);
-                            this.ReportProgress(source.Values.Sum(x => x.PercentOfSource), new object());
+                            this.ReportProgress(source.Sum(x => x.PercentOfSource), new object());
                         }
+
+                        
 
                         if (!source.Any())
                         {

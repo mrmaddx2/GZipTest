@@ -11,7 +11,8 @@ namespace SkillsTest.GZipTest.Core
     {
         private ICollection<MrAbstractBlock> sources = new List<MrAbstractBlock>();
         private ICollection<MrAbstractBlock> targets = new List<MrAbstractBlock>();
-        protected SortedDictionary<int, PieceOf> buffer = new SortedDictionary<int, PieceOf>();
+        private readonly object bufferDummy = new object();
+        private HashSet<PieceOf> buffer = new HashSet<PieceOf>();
 
         private ProjectStatusEnum status;
         private readonly object statusDummy = new object();
@@ -42,24 +43,21 @@ namespace SkillsTest.GZipTest.Core
 
         protected virtual void AddToBuffer(PieceOf value)
         {
-            lock ((buffer as ICollection).SyncRoot)
+            lock (bufferDummy)
             {
-                this.buffer.Add(value.GetHashCode(), value);
+                this.buffer.Add(value);
             }
         }
 
-        public SortedDictionary<int, PieceOf> ReadFromSources(uint count = 1)
+        protected HashSet<PieceOf> ReadFromSources(uint count = 1)
         {
-            var result = new SortedDictionary<int, PieceOf>();
+            var result = new HashSet<PieceOf>();
 
             try
             {
                 foreach (var currentSource in sources)
                 {
-                    foreach (var currentPieceItem in currentSource.Receive(Convert.ToUInt32(count - result.Count)))
-                    {
-                        result.Add(currentPieceItem.Key, currentPieceItem.Value);
-                    }
+                    result.UnionWith(currentSource.Receive(Convert.ToUInt32(count - result.Count)));
 
                     if (result.Count >= count)
                     {
@@ -75,20 +73,23 @@ namespace SkillsTest.GZipTest.Core
             return result;
         }
 
-        public SortedDictionary<int, PieceOf> Receive(uint count = 1)
+        protected PieceOf ReadFromSourcesSingle()
         {
-            var result = new SortedDictionary<int, PieceOf>();
+            return this.ReadFromSources(1).SingleOrDefault();
+        }
 
-            lock ((buffer as ICollection).SyncRoot)
+        protected HashSet<PieceOf> Receive(uint count = 1)
+        {
+            var result = new HashSet<PieceOf>();
+
+            lock (bufferDummy)
             {
-                foreach (var current in this.buffer.Take((int)count).ToList())
-                {
-                    this.buffer.Remove(current.Key);
-                    result.Add(current.Key, current.Value);
-                }
+                result.UnionWith(this.buffer.OrderBy(x => x.SeqNo).Take((int)count));
 
-                return result;
+                this.buffer.ExceptWith(result);
             }
+
+            return result;
         }
 
 

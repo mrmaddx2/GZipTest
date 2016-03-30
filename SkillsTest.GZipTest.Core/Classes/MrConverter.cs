@@ -48,7 +48,14 @@ namespace SkillsTest.GZipTest.Core
 
                     this.Status = ProjectStatusEnum.InProgress;
 
-                    for (int i = 0; i <= MaxThreads - 1; i++)
+                    var threadCount = (MaxThreads - 2);
+
+                    if (threadCount <= 0)
+                    {
+                        threadCount = 1;
+                    }
+
+                    for (int i = 0; i <= threadCount - 1; i++)
                     {
                         var threadKey = Guid.NewGuid().ToString();
 
@@ -129,9 +136,11 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
+                Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
+
                 while (this.Status == ProjectStatusEnum.InProgress)
                 {
-                    var source = this.ReadFromSources().Values.FirstOrDefault();
+                    var source = this.ReadFromSourcesSingle();
                     if (source != null)
                     {
                         switch (mode)
