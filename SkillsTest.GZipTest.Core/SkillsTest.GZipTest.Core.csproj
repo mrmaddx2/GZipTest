@@ -47,7 +47,6 @@
     <Compile Include="Classes\MrSource.cs" />
     <Compile Include="Classes\MrTarget.cs" />
     <Compile Include="Classes\ProjectFile.cs" />
-    <Compile Include="Classes\SourceBlock.cs" />
     <Compile Include="Classes\MrZipper.cs" />
     <Compile Include="Classes\OutputFile.cs" />
     <Compile Include="Classes\PieceOf.cs" />

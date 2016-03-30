@@ -31,7 +31,7 @@ namespace SkillsTest.GZipTest.Core
         {
             this.Body = new FileStream(inputFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None);
-            this.LastWrittenSeqNo = -1;
+            this.LastWrittenSeqNo = 0;
         }
 
         /// <summary>
@@ -48,20 +48,19 @@ namespace SkillsTest.GZipTest.Core
 
             lock (piecesDummy)
             {
-                if (value.ContainsKey(this.LastWrittenSeqNo + 1))
+                var actualSeqNo = this.LastWrittenSeqNo + (this.LastWrittenSeqNo == 0 ? 0 : 1);
+                if (value.ContainsKey(actualSeqNo))
                 {
                     PieceOf nextPiece;
                     do
                     {
                         nextPiece = null;
 
-                        Interlocked.Increment(ref this.LastWrittenSeqNo);
-
-                        if (!value.TryGetValue(this.LastWrittenSeqNo, out nextPiece))
+                        if (!value.TryGetValue(actualSeqNo, out nextPiece))
                         {
-                            if (this.Pieces.TryGetValue(this.LastWrittenSeqNo, out nextPiece))
+                            if (this.Pieces.TryGetValue(actualSeqNo, out nextPiece))
                             {
-                                this.Pieces.Remove(this.LastWrittenSeqNo);
+                                this.Pieces.Remove(actualSeqNo);
                             }
                         }
 
@@ -69,9 +68,9 @@ namespace SkillsTest.GZipTest.Core
                         {
                             var tmpResultArray = nextPiece.GetBodyBuffer(true);
                             this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
+                            actualSeqNo++;
+                            this.LastWrittenSeqNo = nextPiece.SeqNo;
                         }
-
-                        
                     } while (nextPiece != null);
 
                     this.Body.Flush();
