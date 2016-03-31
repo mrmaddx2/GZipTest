@@ -6,23 +6,23 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class PieceOf
+    public class PieceOf : IDisposable
     {
 
-        protected MemoryStream Body { get; set; }
+        private MemoryStream Body { get; set; }
 
-        public int SeqNo { get; protected set; }
+        public uint SeqNo { get; protected set; }
         public decimal PercentOfSource { get; set; }
 
-        public virtual long Length()
+        public ulong Length()
         {
-            return this.Body.Length;
+            return (ulong) this.Body.Length;
         }
 
         public PieceOf(int seqNo)
         {
-            this.Body = new MemoryStream();
-            this.SeqNo = seqNo;
+            this.SeqNo = (uint)seqNo;
+            this.ResetBody(new MemoryStream());
         }
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="cleanBodyAfter">Снимать ли лок с результата</param>
         /// <returns>Массив байт с результатом проделанной над исходным кусочком источника работы</returns>
-        public virtual byte[] GetBodyBuffer(bool cleanBodyAfter)
+        public byte[] GetBodyBuffer(bool cleanBodyAfter)
         {
             var result = this.Body.ToArray();
 
@@ -42,7 +42,7 @@ namespace SkillsTest.GZipTest.Core
             return result;
         }
 
-        protected virtual void ReleaseResources()
+        private void ReleaseResources()
         {
             if (this.Body != null)
             {
@@ -52,7 +52,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
         
-        public virtual void AddToBody(byte[] value)
+        public void AddToBody(byte[] value)
         {
             this.AddToBody(value, 0, value.Length);
         }
@@ -89,21 +89,14 @@ namespace SkillsTest.GZipTest.Core
             return new MemoryStream(GetBodyBuffer(cleanBodyAfter)) {Position = 0};
         }
 
-        public virtual void Dispose()
+        public void Dispose()
         {
             this.ReleaseResources();
         }
 
         public override int GetHashCode()
         {
-            return this.SeqNo;
-        }
-
-        public override bool Equals(object obj)
-        {
-            var tmp = obj as PieceOf;
-
-            return tmp != null && tmp.GetHashCode() == this.GetHashCode();
+            return (int)this.SeqNo;
         }
     }
 }

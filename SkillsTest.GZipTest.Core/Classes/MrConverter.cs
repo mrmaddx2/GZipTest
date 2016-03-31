@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading;
 
@@ -17,7 +18,7 @@ namespace SkillsTest.GZipTest.Core
             AsyncOperation operation);
         #endregion
 
-        protected ThreadDictionary ThreadDictionary = new ThreadDictionary();
+        
 
         private readonly CompressionMode mode;
 
@@ -27,56 +28,16 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        static uint MaxThreads;
+        static readonly uint MaxThreads;
         static MrConverter()
         {
             //В дальнейшем будем создавать по потоку на процессор
             MaxThreads = ProcessInfo.NumberOfProcessorThreads;
         }
 
-        private readonly object startDummy = new object();
         protected override void Start()
         {
-            lock (startDummy)
-            {
-                try
-                {
-                    if (this.Status != ProjectStatusEnum.Unknown)
-                    {
-                        return;
-                    }
-
-                    this.Status = ProjectStatusEnum.InProgress;
-
-                    var threadCount = (MaxThreads - 2);
-
-                    if (threadCount <= 0)
-                    {
-                        threadCount = 1;
-                    }
-
-                    for (int i = 0; i <= threadCount - 1; i++)
-                    {
-                        var threadKey = Guid.NewGuid().ToString();
-
-                        var currentOperation = AsyncOperationManager.CreateOperation(threadKey);
-
-                        this.ThreadDictionary.Add(threadKey, currentOperation);
-
-                        ConvertPiecesActionHandler convertPiecesAction = ConvertPieces;
-                        convertPiecesAction.BeginInvoke(
-                            currentOperation,
-                            null,
-                            null);
-                    }
-
-                    this.PostStart();
-                }
-                catch (Exception exception)
-                {
-                    this.PostError(exception);
-                }
-            }
+            this.DoMainWork(BlockBody, MaxThreads);
         }
 
 
@@ -132,61 +93,36 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        private void ConvertPieces(AsyncOperation operation)
+        private void BlockBody()
         {
-            try
+            Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
+
+            while (this.Status == ProjectStatusEnum.InProgress)
             {
-                Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
-
-                while (this.Status == ProjectStatusEnum.InProgress)
+                var source = this.ReadFromSourcesSingle();
+                if (source != null)
                 {
-                    var source = this.ReadFromSourcesSingle();
-                    if (source != null)
+                    switch (mode)
                     {
-                        switch (mode)
-                        {
-                            case CompressionMode.Compress:
-                                this.Compress(source);
-                                break;
-                            case CompressionMode.Decompress:
-                                this.Decompress(source);
-                                break;
-                        }
-
-                        this.AddToBuffer(source);
+                        case CompressionMode.Compress:
+                            this.Compress(source);
+                            break;
+                        case CompressionMode.Decompress:
+                            this.Decompress(source);
+                            break;
                     }
 
-                    if (source == null)
+                    this.AddToBuffer(source);
+                }
+
+                if (source == null)
+                {
+                    if (this.PostDone() != ProjectStatusEnum.Done)
                     {
-                        if (this.PostDone(operation) != ProjectStatusEnum.Done)
-                        {
-                            Thread.Sleep(100);
-                        }
+                        Thread.Sleep(100);
                     }
                 }
             }
-            catch (Exception exception)
-            {
-                this.PostError(exception);
-            }
-        }
-
-        protected ProjectStatusEnum PostDone(AsyncOperation operation)
-        {
-            lock (this.ThreadDictionary.SyncRoot)
-            {
-                if (AllSourcesDone)
-                {
-                    if (this.ThreadDictionary.SafeIamTheLast(operation))
-                    {
-                        return base.PostDone();
-                    }
-
-                    this.ThreadDictionary.SafeRemoveAndComplete(operation);
-                }
-            }
-
-            return this.Status;
         }
     }
 }

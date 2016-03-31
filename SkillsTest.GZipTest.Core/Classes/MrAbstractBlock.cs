@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Microsoft.VisualBasic.Devices;
+using SkillsTest.GZipTest.Core.Classes;
 
 namespace SkillsTest.GZipTest.Core
 {
@@ -11,8 +14,10 @@ namespace SkillsTest.GZipTest.Core
     {
         private ICollection<MrAbstractBlock> sources = new List<MrAbstractBlock>();
         private ICollection<MrAbstractBlock> targets = new List<MrAbstractBlock>();
-        private readonly object bufferDummy = new object();
-        private HashSet<PieceOf> buffer = new HashSet<PieceOf>();
+        private BlockBuffer buffer = new BlockBuffer();
+        private ThreadDictionary ThreadDictionary = new ThreadDictionary();
+        private readonly object correctorDummy = new object();
+        private PerformanceCorrector PerformanceCorrector;
 
         private ProjectStatusEnum status;
         private readonly object statusDummy = new object();
@@ -34,18 +39,55 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
+        public PerformanceReport GenerateReport()
+        {
+            var result = new PerformanceReport()
+            {
+                Corrector = this.PerformanceCorrector,
+                BufferSize = this.buffer.BufferSize,
+                BufferAmount = this.buffer.Count,
+                Block = this
+            };
+
+            return result;
+        }
+
+
+        public bool CorrectPerformance(PerformanceCorrector corrector)
+        {
+            lock (correctorDummy)
+            {
+                if (this.PerformanceCorrector == null)
+                {
+                    this.PerformanceCorrector = corrector;
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
 
         public MrAbstractBlock()
         {
             this.Status = ProjectStatusEnum.Unknown;
+            this.PerformanceCorrector = null;
         }
 
 
         protected virtual void AddToBuffer(PieceOf value)
         {
-            lock (bufferDummy)
+            this.buffer.Add(value);
+
+            if (this.PerformanceCorrector != null)
             {
-                this.buffer.Add(value);
+                this.PerformanceCorrector.CorrectPerformance();
+                if (this.PerformanceCorrector.WasAppliedTo() == this.ThreadDictionary.SafeCount)
+                {
+                    this.PerformanceCorrector = null;
+                }
             }
         }
 
@@ -80,33 +122,88 @@ namespace SkillsTest.GZipTest.Core
 
         protected HashSet<PieceOf> Receive(uint count = 1)
         {
-            var result = new HashSet<PieceOf>();
-
-            lock (bufferDummy)
-            {
-                result.UnionWith(this.buffer.OrderBy(x => x.SeqNo).Take((int)count));
-
-                this.buffer.ExceptWith(result);
-            }
-
-            return result;
+            return this.buffer.Fetch(count);
         }
 
 
         protected abstract void Start();
 
+        private readonly object _mainWorkDummy = new object();
+        protected void DoMainWork(Action mainWorkAction, uint maxThreads = 1)
+        {
+            lock (_mainWorkDummy)
+            {
+                try
+                {
+                    if (this.Status != ProjectStatusEnum.Unknown || this.ThreadDictionary.Any())
+                    {
+                        return;
+                    }
+                    else
+                    {
+                        this.Status = ProjectStatusEnum.InProgress;
+                    }
 
+                    for (int i = 0; i <= maxThreads - 1; i++)
+                    {
+                        this.ThreadDictionary.SafeAdd(new Thread(
+                            () =>
+                            {
+                                try
+                                {
+                                    mainWorkAction.Invoke();
+                                }
+                                catch (Exception exception)
+                                {
+                                    this.PostError(exception);
+                                }
+                            }));
+                    }
+
+                    foreach (var current in ThreadDictionary.Values)
+                    {
+                        current.Start();
+                    }
+
+                    if (this.PostStart() != ProjectStatusEnum.InProgress)
+                    {
+                        throw new Exception(string.Format("Ожидался переход в статус {0}", ProjectStatusEnum.InProgress));
+                    }
+                }
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
+                }
+            }
+        }
+
+        public override string ToString()
+        {
+            return this.GetType().ToString();
+        }
+
+        private readonly object postErrorDummy = new object();
         protected virtual Exception PostError(Exception exception)
         {
-            Exception result = new Exception(this.GetType().ToString(), exception);
-
-            if (this.Status == ProjectStatusEnum.InProgress)
+            lock (postErrorDummy)
             {
-                this.Status = ProjectStatusEnum.Error;
-
-                foreach (var current in this.targets.ToList())
+                try
                 {
-                    current.PostError(result);
+                    Exception result = new Exception(this.ToString(), exception);
+
+                    if (this.Status == ProjectStatusEnum.InProgress)
+                    {
+                        this.Status = ProjectStatusEnum.Error;
+
+                        foreach (var current in this.targets.ToList())
+                        {
+                            current.PostError(result);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    exception = new Exception(string.Format("Оповещение родителей блока {0} об ошибке", this.ToString()), e);
                 }
             }
 
@@ -114,12 +211,11 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        private readonly object allSourcesDoneDummy = new object();
-        protected bool AllSourcesDone
+        protected virtual bool AllSourcesDone
         {
             get
             {
-                lock (allSourcesDoneDummy)
+                lock ((this.sources as ICollection).SyncRoot)
                 {
                     return this.sources.All(x => x.Status == ProjectStatusEnum.Done);
                 }
@@ -128,58 +224,71 @@ namespace SkillsTest.GZipTest.Core
 
 
         private readonly object postStartDummy = new object();
-        protected ProjectStatusEnum PostStart()
+        private ProjectStatusEnum PostStart()
         {
             lock (postStartDummy)
             {
-                if (this.Status == ProjectStatusEnum.Unknown)
+                try
                 {
-                    this.Start();
-                }
+                    if (this.Status == ProjectStatusEnum.Unknown)
+                    {
+                        this.Status = ProjectStatusEnum.InProgress;
+                        this.Start();
+                    }
 
-                foreach (var currentTarget in targets)
-                {
-                    currentTarget.Start();
-                }
+                    foreach (var currentTarget in targets)
+                    {
+                        currentTarget.Start();
+                    }
 
-                foreach (var currentSource in sources)
-                {
-                    currentSource.Start();
+                    foreach (var currentSource in sources)
+                    {
+                        currentSource.Start();
+                    }
                 }
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
+                }                
 
                 return this.Status;
             }
         }
 
 
+        private readonly object postDoneDummy = new object();
         protected virtual ProjectStatusEnum PostDone()
         {
-            try
+            lock (postDoneDummy)
             {
-                if (AllSourcesDone)
+                try
                 {
-                    if (this.Status == ProjectStatusEnum.InProgress)
+                    if (AllSourcesDone && this.ThreadDictionary.SafeIamTheLast(Thread.CurrentThread))
                     {
-                        this.Status = ProjectStatusEnum.Done;
-                    }
-                    else
-                    {
-                        throw new ThreadStateException(string.Format(
-                            "В статус {0} можно перейти только из статуса {1}", ProjectStatusEnum.Done,
-                            ProjectStatusEnum.InProgress));
+                        if (this.Status == ProjectStatusEnum.InProgress)
+                        {
+                            this.ThreadDictionary.SafeRemoveAndComplete(Thread.CurrentThread);
+                            this.Status = ProjectStatusEnum.Done;
+                        }
+                        else
+                        {
+                            throw new ThreadStateException(string.Format(
+                                "В статус {0} можно перейти только из статуса {1}", ProjectStatusEnum.Done,
+                                ProjectStatusEnum.InProgress));
+                        }
                     }
                 }
-            }
-            catch (Exception exception)
-            {
-                this.PostError(exception);
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
+                }
             }
 
             return this.Status;
         }
 
 
-        public void AddTarget(MrAbstractBlock value)
+        public virtual void AddTarget(MrAbstractBlock value)
         {
             lock ((this.targets as ICollection).SyncRoot)
             {
@@ -192,7 +301,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        public void RemoveTarget(MrAbstractBlock value)
+        public virtual void RemoveTarget(MrAbstractBlock value)
         {
             lock ((this.targets as ICollection).SyncRoot)
             {
@@ -205,7 +314,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        public void AddSource(MrAbstractBlock value)
+        public virtual void AddSource(MrAbstractBlock value)
         {
             lock ((this.sources as ICollection).SyncRoot)
             {
@@ -217,7 +326,7 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public void RemoveSource(MrAbstractBlock value)
+        public virtual void RemoveSource(MrAbstractBlock value)
         {
             lock ((this.sources as ICollection).SyncRoot)
             {
@@ -229,7 +338,7 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             foreach (var current in this.targets.ToList())
             {

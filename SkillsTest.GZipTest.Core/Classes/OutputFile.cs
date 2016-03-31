@@ -16,9 +16,9 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Коллекция с кусочками файла-результата
         /// </summary>
-        protected SortedDictionary<int, PieceOf> Pieces = new SortedDictionary<int, PieceOf>();
+        protected HashSet<PieceOf> Pieces = new HashSet<PieceOf>();
 
-        public int LastWrittenSeqNo;
+        public uint LastWrittenSeqNo;
 
         public override ProjectFileTypeEnum FileType
         {
@@ -33,25 +33,13 @@ namespace SkillsTest.GZipTest.Core
                     FileShare.None);
             this.LastWrittenSeqNo = 0;
         }
-
-        public virtual void AddPiece(HashSet<PieceOf> value)
-        {
-            var tmp = new SortedDictionary<int, PieceOf>();
-
-            foreach (var current in value)
-            {
-                tmp.Add(current.SeqNo, current);
-            }
-
-            this.AddPiece(tmp);
-        }
-
+        
         /// <summary>
         /// Записывает в файл-результат очередной кусочек.
         /// </summary>
         /// <remarks>Для оптимального расходования ресурсов необходимо чтобы кусочки попадали в файл в прямом порядке</remarks>
         /// <param name="value">Кусочек файла-результата</param>
-        public virtual void AddPiece(SortedDictionary<int, PieceOf> value)
+        public virtual void AddPiece(HashSet<PieceOf> value)
         {
             if (value == null || value.Count == 0)
             {
@@ -60,37 +48,21 @@ namespace SkillsTest.GZipTest.Core
 
             lock (piecesDummy)
             {
+                this.Pieces.UnionWith(value);
+
                 var actualSeqNo = this.LastWrittenSeqNo + (this.LastWrittenSeqNo == 0 ? 0 : 1);
-                if (value.ContainsKey(actualSeqNo))
+                if (value.Any(x => x.SeqNo == actualSeqNo))
                 {
                     PieceOf nextPiece;
-                    do
+                    while ((nextPiece = this.Pieces.SingleOrDefault(x => x.SeqNo == actualSeqNo)) != null)
                     {
-                        nextPiece = null;
+                        var tmpBodyLength = nextPiece.Length();
+                        this.Body.Write(nextPiece.GetBodyBuffer(true), 0, (int)tmpBodyLength);
+                        actualSeqNo++;
+                        this.LastWrittenSeqNo = nextPiece.SeqNo;
+                    }
 
-                        if (!value.TryGetValue(actualSeqNo, out nextPiece))
-                        {
-                            if (this.Pieces.TryGetValue(actualSeqNo, out nextPiece))
-                            {
-                                this.Pieces.Remove(actualSeqNo);
-                            }
-                        }
-
-                        if (nextPiece != null)
-                        {
-                            var tmpResultArray = nextPiece.GetBodyBuffer(true);
-                            this.Body.Write(tmpResultArray, 0, tmpResultArray.Length);
-                            actualSeqNo++;
-                            this.LastWrittenSeqNo = nextPiece.SeqNo;
-                        }
-                    } while (nextPiece != null);
-
-                    this.Body.Flush();
-                }
-
-                foreach (var currentKey in value.Keys.Where(x => x > this.LastWrittenSeqNo))
-                {
-                    this.Pieces.Add(currentKey, value[currentKey]);
+                    this.Pieces.RemoveWhere(x => x.SeqNo <= this.LastWrittenSeqNo);
                 }
             }
         }

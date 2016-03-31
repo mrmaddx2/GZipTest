@@ -64,6 +64,11 @@ namespace SkillsTest.GZipTest.Core
             var source = new MrSource();
             var action = new MrConverter(mode);
             var result = new MrTarget(outputFilePath);
+            var dispatcher = new MrsDispatcher();
+            dispatcher.Completed += DispatcherOnCompleted;
+
+            dispatcher.AddSource(source);
+            dispatcher.AddSource(action);
 
             source.AddTarget(action);
             action.AddTarget(result);
@@ -74,15 +79,14 @@ namespace SkillsTest.GZipTest.Core
             source.Post(inputFilePath);
         }
 
+        private void DispatcherOnCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            this.OnConvertAsyncCompleted(e);
+        }
+
         private void ResultOnConvertAsyncCompleted(object sender, AsyncCompletedEventArgs e)
         {
             this.OnConvertAsyncCompleted(e);
-
-            var a = (sender as MrTarget);
-        }
-
-        public void Dispose()
-        {
         }
     }
 }

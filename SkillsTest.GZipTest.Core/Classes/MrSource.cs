@@ -10,21 +10,15 @@ using System.Threading;
 namespace SkillsTest.GZipTest.Core
 {
     public class MrSource : MrAbstractBlock
-    {
-        #region Delegates
-
-        protected delegate void FillingActionHandler();
-        #endregion
-
-        
-        protected InputFile inputFile;
+    {        
+        public InputFile InputFile;
         
 
         public void Post(string value)
         {
             try
             {
-                this.inputFile = new InputFile(value);
+                this.InputFile = new InputFile(value);
 
                 this.Start();
             }
@@ -35,54 +29,25 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        private readonly object startDummy = new object();
         protected override void Start()
         {
-            lock (startDummy)
-            {
-                try
-                {
-                    if (this.Status != ProjectStatusEnum.Unknown)
-                    {
-                        return;
-                    }
-
-                    this.Status = ProjectStatusEnum.InProgress;
-
-                    FillingActionHandler fillingAction = this.Filling;
-
-                    fillingAction.BeginInvoke(null, null);
-
-                    this.PostStart();
-                }
-                catch (Exception exception)
-                {
-                    this.PostError(exception);
-                }
-            }
+            this.DoMainWork(BlockBody);
         }
 
 
-        protected virtual void Filling()
+        private void BlockBody()
         {
-            try
+            Thread.CurrentThread.Priority = ThreadPriority.Normal;
+
+            PieceOf newPiece;
+            while ((newPiece = this.InputFile.Fetch(inputFragmentSize: null)) != null && this.Status == ProjectStatusEnum.InProgress)
             {
-                Thread.CurrentThread.Priority = ThreadPriority.Normal;
-
-                PieceOf newPiece;
-                while ((newPiece = this.inputFile.Fetch(inputFragmentSize: null)) != null && this.Status == ProjectStatusEnum.InProgress)
-                {
-                    this.AddToBuffer(newPiece);
-                }
-
-                if (this.PostDone() != ProjectStatusEnum.Done)
-                {
-                    throw new InvalidAsynchronousStateException(string.Format("После окончания считывания статус не был переведен в {0}", ProjectStatusEnum.Done));
-                }
+                this.AddToBuffer(newPiece);
             }
-            catch (Exception exception)
+
+            if (this.PostDone() != ProjectStatusEnum.Done)
             {
-                this.PostError(exception);
+                throw new InvalidAsynchronousStateException(string.Format("После окончания считывания статус не был переведен в {0}", ProjectStatusEnum.Done));
             }
         }
     }

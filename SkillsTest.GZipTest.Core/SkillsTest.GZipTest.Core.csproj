@@ -31,6 +31,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -39,13 +40,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\ConvertAsyncCompletedEventArgs.cs" />
+    <Compile Include="Classes\BlockBuffer.cs" />
     <Compile Include="Classes\ConvertProgressChangedEventArgs.cs" />
     <Compile Include="Classes\InputFile.cs" />
     <Compile Include="Classes\MrAbstractBlock.cs" />
     <Compile Include="Classes\MrConverter.cs" />
+    <Compile Include="Classes\MrsDispatcher.cs" />
     <Compile Include="Classes\MrSource.cs" />
     <Compile Include="Classes\MrTarget.cs" />
+    <Compile Include="Classes\PerformanceCorrector.cs" />
+    <Compile Include="Classes\PerformanceReport.cs" />
     <Compile Include="Classes\ProjectFile.cs" />
     <Compile Include="Classes\MrZipper.cs" />
     <Compile Include="Classes\OutputFile.cs" />
@@ -53,13 +57,12 @@
     <Compile Include="Classes\ThreadDictionary.cs" />
     <Compile Include="Delegates\ConvertEventHandler.cs" />
     <Compile Include="Delegates\ProgressChangedEventHandler.cs" />
-    <Compile Include="Enums\OfferResponseEnum.cs" />
+    <Compile Include="Enums\PerformanceActionEnum.cs" />
     <Compile Include="Enums\ProjectFileTypeEnum.cs" />
     <Compile Include="Enums\ProjectStatusEnum.cs" />
     <Compile Include="Enums\PieceOfResultStatusEnum.cs" />
     <Compile Include="Helpers\ProcessInfo.cs" />
     <Compile Include="Interfaces\IProjectFile.cs" />
-    <Compile Include="Interfaces\IThreadDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
