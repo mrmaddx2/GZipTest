@@ -10,10 +10,9 @@ namespace SkillsTest.GZipTest.Core
 {
     public class PerformanceCorrector
     {
-        public static int SleepMax = 5000;
-
         public PerformanceActionEnum SetLevel { get; private set; }
         public int Duration { get; private set; }
+        public uint ApplyTo { get; private set; }
 
         private readonly ThreadDictionary wasAppliedTo = new ThreadDictionary();
 
@@ -25,16 +24,27 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public PerformanceCorrector(PerformanceActionEnum newLevel, int duration)
+        public bool IsActive
+        {
+            get { return this.WasAppliedTo() < this.ApplyTo; }
+        }
+
+        public PerformanceCorrector(PerformanceActionEnum newLevel, int duration, uint applyTo)
         {
             this.SetLevel = newLevel;
             this.Duration = duration;
+            this.ApplyTo = applyTo;
         }
 
 
         private readonly object correctPerformanceDummy = new object();
         public bool CorrectPerformance()
         {
+            if (!IsActive)
+            {
+                return false;
+            }
+
             lock (correctPerformanceDummy)
             {
                 try

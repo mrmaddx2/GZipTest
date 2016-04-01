@@ -25,19 +25,7 @@ namespace SkillsTest.GZipTest.Core
         public MrConverter(CompressionMode inputMode)
         {
             this.mode = inputMode;
-        }
-
-
-        static readonly uint MaxThreads;
-        static MrConverter()
-        {
-            //В дальнейшем будем создавать по потоку на процессор
-            MaxThreads = ProcessInfo.NumberOfProcessorThreads;
-        }
-
-        protected override void Start()
-        {
-            this.DoMainWork(BlockBody, MaxThreads);
+            this.MaxThreads = ProcessInfo.NumberOfProcessorThreads;
         }
 
 
@@ -93,7 +81,8 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        private void BlockBody()
+        
+        protected override void MainAction()
         {
             Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
 
@@ -119,7 +108,7 @@ namespace SkillsTest.GZipTest.Core
                 {
                     if (this.PostDone() != ProjectStatusEnum.Done)
                     {
-                        Thread.Sleep(100);
+                        Thread.Sleep(this.SleepTime);
                     }
                 }
             }

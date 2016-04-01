@@ -62,6 +62,8 @@ namespace SkillsTest.GZipTest.Core
                         this.LastWrittenSeqNo = nextPiece.SeqNo;
                     }
 
+                    this.Body.Flush();
+
                     this.Pieces.RemoveWhere(x => x.SeqNo <= this.LastWrittenSeqNo);
                 }
             }

@@ -10,7 +10,17 @@ namespace SkillsTest.GZipTest.Core.Classes
         public readonly object SyncRoot = new object();
         private HashSet<PieceOf> buffer = new HashSet<PieceOf>();
 
-        public uint Count { get { return (uint)this.buffer.Count; } }
+        public uint Count
+        {
+            get
+            {
+                lock (SyncRoot)
+                {
+                    return (uint)this.buffer.Count;
+                }
+            }
+        }
+
         public ulong BufferSize { get; private set; }
 
         public void Add(PieceOf value)

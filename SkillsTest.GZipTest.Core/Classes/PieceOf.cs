@@ -16,7 +16,7 @@ namespace SkillsTest.GZipTest.Core
 
         public ulong Length()
         {
-            return (ulong) this.Body.Length;
+            return (ulong) (Body == null ? 0 : Body.Length);
         }
 
         public PieceOf(int seqNo)
@@ -46,6 +46,11 @@ namespace SkillsTest.GZipTest.Core
         {
             if (this.Body != null)
             {
+                if (this.Body.CanRead || this.Body.CanWrite)
+                {
+                    this.Body.Flush();
+                    this.Body.Close();
+                }
                 this.Body.Dispose();
                 this.Body = null;
             }

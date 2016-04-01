@@ -49,13 +49,13 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        public int SafeCount
+        public uint SafeCount
         {
             get
             {
                 lock (this.SyncRoot)
                 {
-                    return this.Count;
+                    return (uint)this.Count;
                 }
             }
         }

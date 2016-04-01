@@ -37,12 +37,7 @@ namespace SkillsTest.GZipTest.Core
             if (handler != null) handler(this, e);
         }
 
-        protected override void Start()
-        {
-            this.DoMainWork(BlockBody);
-        }
-
-        private void BlockBody()
+        protected override void MainAction()
         {
             while (this.Status == ProjectStatusEnum.InProgress)
             {
@@ -72,19 +67,26 @@ namespace SkillsTest.GZipTest.Core
 
                     if (problemSources.Any())
                     {
-                        foreach (var current in problemSources)
+                        foreach (var current in problemSources.Where(x => x.Corrector == null || !x.Corrector.IsActive))
                         {
-                            if (current.Block.CorrectPerformance(new PerformanceCorrector(PerformanceActionEnum.Sleep,
-                                    1000)))
-                            {
-                            }
+                            var oldCorrector =
+                                current.Block.SetPerformanceCorrector(
+                                    new PerformanceCorrector(PerformanceActionEnum.Sleep,
+                                        2000, current.ThreadCount));
                         }
                     }
+
+                    
+                }
+
+                if (avalMem < 20)
+                {
+                    GC.Collect();
                 }
 
                 if (this.PostDone() != ProjectStatusEnum.Done)
                 {
-                    Thread.Sleep(1000);
+                    Thread.Sleep(this.SleepTime);
                 }
             }
         }

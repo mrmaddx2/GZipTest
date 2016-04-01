@@ -59,13 +59,7 @@ namespace SkillsTest.GZipTest.Core
             this.outputFile = new OutputFile(value);
         }
 
-        protected override void Start()
-        {
-            this.DoMainWork(BlockBody);
-        }
-
-
-        private void BlockBody()
+        protected override void MainAction()
         {
             this.AsyncOpStartDttm = DateTime.Now;
 
@@ -84,7 +78,7 @@ namespace SkillsTest.GZipTest.Core
                 {
                     if (this.PostDone() != ProjectStatusEnum.Done)
                     {
-                        Thread.Sleep(100);
+                        Thread.Sleep(this.SleepTime);
                     }
                 }
             }

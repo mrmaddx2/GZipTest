@@ -153,19 +153,14 @@ namespace SkillsTest.GZipTest.Core
                         var nRead = Body.Read(buffer, 0, buffer.Length);
                         result.AddToBody(buffer, 0, nRead);
                     }
+
+                    this.Body.Flush();
                 }
                 catch (Exception exception)
                 {
                     throw new Exception(
                         string.Format("Получение кусочка источника. Начиная с позиции {0}",
                             setStreamPosition), exception);
-                }
-                finally
-                {
-                    if (this.Body != null && this.Body.CanRead)
-                    {
-                        this.Body.Flush();
-                    }
                 }
 
                 var tmpLength = result.Length();

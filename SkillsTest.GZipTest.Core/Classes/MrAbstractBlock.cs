@@ -12,6 +12,9 @@ namespace SkillsTest.GZipTest.Core
 {
     public abstract class MrAbstractBlock : IDisposable
     {
+        public uint MaxThreads { get; protected set; }
+        public int SleepTime { get; protected set; }
+
         private ICollection<MrAbstractBlock> sources = new List<MrAbstractBlock>();
         private ICollection<MrAbstractBlock> targets = new List<MrAbstractBlock>();
         private BlockBuffer buffer = new BlockBuffer();
@@ -46,26 +49,21 @@ namespace SkillsTest.GZipTest.Core
                 Corrector = this.PerformanceCorrector,
                 BufferSize = this.buffer.BufferSize,
                 BufferAmount = this.buffer.Count,
-                Block = this
+                Block = this,
+                ThreadCount = this.ThreadDictionary.SafeCount
             };
 
             return result;
         }
 
 
-        public bool CorrectPerformance(PerformanceCorrector corrector)
+        public PerformanceCorrector SetPerformanceCorrector(PerformanceCorrector corrector)
         {
             lock (correctorDummy)
             {
-                if (this.PerformanceCorrector == null)
-                {
-                    this.PerformanceCorrector = corrector;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                var oldCorrector = this.PerformanceCorrector;
+                this.PerformanceCorrector = corrector;
+                return oldCorrector;
             }
         }
 
@@ -74,20 +72,27 @@ namespace SkillsTest.GZipTest.Core
         {
             this.Status = ProjectStatusEnum.Unknown;
             this.PerformanceCorrector = null;
+            this.MaxThreads = 1;
+            this.SleepTime = 100;
         }
 
 
         protected virtual void AddToBuffer(PieceOf value)
         {
-            this.buffer.Add(value);
+            if (value.Length() == 0)
+            {
+                var a = 1;
+            }
 
+            this.buffer.Add(value);
+            this.ExecPerformanceCorrector();
+        }
+
+        protected void ExecPerformanceCorrector()
+        {
             if (this.PerformanceCorrector != null)
             {
                 this.PerformanceCorrector.CorrectPerformance();
-                if (this.PerformanceCorrector.WasAppliedTo() == this.ThreadDictionary.SafeCount)
-                {
-                    this.PerformanceCorrector = null;
-                }
             }
         }
 
@@ -126,10 +131,15 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        protected abstract void Start();
+        public void Start()
+        {
+            DoMainWork(MainAction, this.MaxThreads);
+        }
+
+        protected abstract void MainAction();
 
         private readonly object _mainWorkDummy = new object();
-        protected void DoMainWork(Action mainWorkAction, uint maxThreads = 1)
+        private void DoMainWork(Action mainWorkAction, uint maxThreads = 1)
         {
             lock (_mainWorkDummy)
             {

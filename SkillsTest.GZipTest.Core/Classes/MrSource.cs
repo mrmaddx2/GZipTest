@@ -29,13 +29,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        protected override void Start()
-        {
-            this.DoMainWork(BlockBody);
-        }
-
-
-        private void BlockBody()
+        protected override void MainAction()
         {
             Thread.CurrentThread.Priority = ThreadPriority.Normal;
 
