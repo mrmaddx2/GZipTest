@@ -63,7 +63,13 @@ namespace SkillsTest.GZipTest.Core
                     //50 процентов от занятой приложением памяти
                     var maxMemoryUsage = (ulong)Math.Floor(Convert.ToDouble(currentProc.PrivateMemorySize64) * 0.25);
 
-                    var problemSources = sourceReports.Union(converterReports).Where(x => x.BufferSize > maxMemoryUsage).ToList();
+                    var problemSources =
+                        sourceReports.Union(converterReports)
+                            .Where(
+                                x =>
+                                    x.BufferSize > maxMemoryUsage &&
+                                    !(x.Block is MrConverter && !x.Block.AllSourcesDone))
+                            .ToList();
 
                     if (problemSources.Any())
                     {
@@ -111,7 +117,7 @@ namespace SkillsTest.GZipTest.Core
             throw new NotSupportedException();
         }
 
-        protected override bool AllSourcesDone
+        public override bool AllSourcesDone
         {
             get { return this.workers.Any() && this.workers.All(x => x.Status == ProjectStatusEnum.Done); }
         }

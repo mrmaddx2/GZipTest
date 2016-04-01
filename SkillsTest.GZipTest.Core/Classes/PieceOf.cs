@@ -11,7 +11,7 @@ namespace SkillsTest.GZipTest.Core
 
         private MemoryStream Body { get; set; }
 
-        public uint SeqNo { get; protected set; }
+        public long SeqNo { get; protected set; }
         public decimal PercentOfSource { get; set; }
 
         public ulong Length()
@@ -19,9 +19,9 @@ namespace SkillsTest.GZipTest.Core
             return (ulong) (Body == null ? 0 : Body.Length);
         }
 
-        public PieceOf(int seqNo)
+        public PieceOf(long seqNo)
         {
-            this.SeqNo = (uint)seqNo;
+            this.SeqNo = seqNo;
             this.ResetBody(new MemoryStream());
         }
 
@@ -32,6 +32,11 @@ namespace SkillsTest.GZipTest.Core
         /// <returns>Массив байт с результатом проделанной над исходным кусочком источника работы</returns>
         public byte[] GetBodyBuffer(bool cleanBodyAfter)
         {
+            if (this.Body == null)
+            {
+                this.ResetBody(new MemoryStream());
+            }
+
             var result = this.Body.ToArray();
 
             if (cleanBodyAfter)

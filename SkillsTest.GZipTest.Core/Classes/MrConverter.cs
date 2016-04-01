@@ -13,13 +13,6 @@ namespace SkillsTest.GZipTest.Core
 {
     public class MrConverter : MrAbstractBlock
     {
-        #region Delegates
-        protected delegate void ConvertPiecesActionHandler(
-            AsyncOperation operation);
-        #endregion
-
-        
-
         private readonly CompressionMode mode;
 
         public MrConverter(CompressionMode inputMode)
@@ -61,16 +54,32 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
-                using (GZipStream compressedzipStream = new GZipStream(PieceOfSource.GetBodyStream(true), CompressionMode.Decompress, true))
-                {
-                    byte[] buffer = new byte[512000];
-                    int nRead;
-                    while ((nRead = compressedzipStream.Read(buffer, 0, buffer.Length)) > 0)
-                    {
-                        PieceOfSource.AddToBody(buffer, 0, nRead);
-                    }
+                var tmpLength = PieceOfSource.Length();
 
-                    compressedzipStream.Close();
+                using (var tmpStream = PieceOfSource.GetBodyStream(true))
+                {
+                    var tmpBody = tmpStream.ToArray();
+
+
+                    using (GZipStream compressedzipStream = new GZipStream(tmpStream, CompressionMode.Decompress, false))
+                    {
+                        compressedzipStream.Flush();
+
+                        byte[] buffer = new byte[tmpBody.Length];
+                        int nRead;
+                        while ((nRead = compressedzipStream.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            PieceOfSource.AddToBody(buffer, 0, nRead);
+                        }
+
+                        if (PieceOfSource.Length() == 0)
+                        {
+                            //TODO: очень странная проблема. На выходе упаковщик не отдает ничего
+                            var a = 1;
+                        }
+
+                        compressedzipStream.Close();
+                    }
                 }
             }
             catch (Exception exception)

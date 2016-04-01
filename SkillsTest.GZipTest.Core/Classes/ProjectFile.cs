@@ -20,10 +20,31 @@ namespace SkillsTest.GZipTest.Core
 
         public ProjectFile(string inputFilePath)
         {
-            
+            this.CurrentSeqNo = 0;
         }
 
         public abstract ProjectFileTypeEnum FileType { get; protected set; }
+
+        private readonly object currentSeqNoDummy = new object();
+        private long currentSeqNo;
+        protected long CurrentSeqNo;
+            /*
+        {
+            get
+            {
+                lock (currentSeqNoDummy)
+                {
+                    return this.currentSeqNo;
+                }
+            }
+            protected set
+            {
+                lock (currentSeqNoDummy)
+                {
+                    this.currentSeqNo = value;
+                }
+            }
+        }*/
 
         public virtual void Dispose()
         {

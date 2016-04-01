@@ -9,5 +9,6 @@ namespace SkillsTest.GZipTest.Core
     {
         long Length();
         ProjectFileTypeEnum FileType { get; }
+        //long CurrentSeqNo { get; }
     }
 }

@@ -221,7 +221,7 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
-        protected virtual bool AllSourcesDone
+        public virtual bool AllSourcesDone
         {
             get
             {
@@ -273,12 +273,15 @@ namespace SkillsTest.GZipTest.Core
             {
                 try
                 {
-                    if (AllSourcesDone && this.ThreadDictionary.SafeIamTheLast(Thread.CurrentThread))
+                    if (AllSourcesDone)
                     {
                         if (this.Status == ProjectStatusEnum.InProgress)
                         {
+                            if (this.ThreadDictionary.SafeIamTheLast(Thread.CurrentThread))
+                            {
+                                this.Status = ProjectStatusEnum.Done;
+                            }
                             this.ThreadDictionary.SafeRemoveAndComplete(Thread.CurrentThread);
-                            this.Status = ProjectStatusEnum.Done;
                         }
                         else
                         {

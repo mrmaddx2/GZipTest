@@ -24,13 +24,10 @@ namespace SkillsTest.GZipTest.Core
             DefaultFragmentSize = 512000;
         }
 
-        protected int currentSeqNo;
-
         public InputFile(string inputFilePath)
             : base(inputFilePath)
         {
             this.Body = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            this.currentSeqNo = 0;
 
             var prevPosition = this.Body.Position;
 
@@ -95,7 +92,7 @@ namespace SkillsTest.GZipTest.Core
                         setStreamPosition = this.Body.Position;
                     }
 
-                    result = new PieceOf(currentSeqNo);
+                    result = new PieceOf(Interlocked.Increment(ref this.CurrentSeqNo));
 
                     //Нужно отщипнуть кусочек необходимомго размера
 
@@ -166,10 +163,13 @@ namespace SkillsTest.GZipTest.Core
                 var tmpLength = result.Length();
                 if (tmpLength > 0)
                 {
-                    Interlocked.Increment(ref this.currentSeqNo);
                     result.PercentOfSource =
                         Convert.ToDecimal(tmpLength) / Convert.ToDecimal(this.Length()) * 100;
                     return result;
+                }
+                else if(Body.Position != Body.Length)
+                {
+                    throw new Exception("Кусочек нулевой длины обнаружен до окончания потока");
                 }
                 else
                 {

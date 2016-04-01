@@ -18,8 +18,6 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         protected HashSet<PieceOf> Pieces = new HashSet<PieceOf>();
 
-        public uint LastWrittenSeqNo;
-
         public override ProjectFileTypeEnum FileType
         {
             get { return ProjectFileTypeEnum.Unknown;}
@@ -31,7 +29,6 @@ namespace SkillsTest.GZipTest.Core
         {
             this.Body = new FileStream(inputFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None);
-            this.LastWrittenSeqNo = 0;
         }
         
         /// <summary>
@@ -50,7 +47,12 @@ namespace SkillsTest.GZipTest.Core
             {
                 this.Pieces.UnionWith(value);
 
-                var actualSeqNo = this.LastWrittenSeqNo + (this.LastWrittenSeqNo == 0 ? 0 : 1);
+                if (this.Pieces.Count >= 100)
+                {
+                    var a = 1;
+                }
+
+                var actualSeqNo = this.CurrentSeqNo + 1;
                 if (value.Any(x => x.SeqNo == actualSeqNo))
                 {
                     PieceOf nextPiece;
@@ -59,12 +61,16 @@ namespace SkillsTest.GZipTest.Core
                         var tmpBodyLength = nextPiece.Length();
                         this.Body.Write(nextPiece.GetBodyBuffer(true), 0, (int)tmpBodyLength);
                         actualSeqNo++;
-                        this.LastWrittenSeqNo = nextPiece.SeqNo;
+                    }
+
+                    if (actualSeqNo - 1 > this.CurrentSeqNo)
+                    {
+                        this.CurrentSeqNo = actualSeqNo - 1;
                     }
 
                     this.Body.Flush();
 
-                    this.Pieces.RemoveWhere(x => x.SeqNo <= this.LastWrittenSeqNo);
+                    this.Pieces.RemoveWhere(x => x.SeqNo < actualSeqNo);
                 }
             }
         }
