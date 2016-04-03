@@ -81,12 +81,6 @@ namespace SkillsTest.GZipTest.Core
                     
                 }
 
-                if (AllSourcesDone)
-                {
-                    var a = 1;
-                    var b = this.GenerateReport();
-                }
-
                 if (!source.Any())
                 {
                     if (this.PostDone() != ProjectStatusEnum.Done)

@@ -5,6 +5,12 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core.Classes
 {
+    /// <summary>
+    /// Буфер.
+    /// </summary>
+    /// <remarks>
+    /// Представляет из себя обертку для коллекции фрагментов инофрмации.
+    /// </remarks>
     public class BlockBuffer
     {
         public readonly object SyncRoot = new object();
@@ -21,19 +27,26 @@ namespace SkillsTest.GZipTest.Core.Classes
             }
         }
 
+        /// <summary>
+        /// Общее кол-во информации в буфере. В Kb
+        /// </summary>
         public ulong BufferSize { get; private set; }
 
-
-        private long GetKey(long value)
+        /// <summary>
+        /// Функция предназначена для того, чтобы фрагменты в коллекции распологались в обратном порядке.
+        /// </summary>
+        /// <param name="value">фрагмент данных</param>
+        /// <returns>long.MaxValue минут порядковый номер фрагмента данных</returns>
+        private long GetKey(PieceOf value)
         {
-            return long.MaxValue - value;
+            return long.MaxValue - value.SeqNo;
         }
 
         public void Add(PieceOf value)
         {
             lock (this.SyncRoot)
             {
-                this.buffer.Add(this.GetKey(value.SeqNo), value);
+                this.buffer.Add(this.GetKey(value), value);
                 this.BufferSize += value.Length();
             }
         }
@@ -51,6 +64,11 @@ namespace SkillsTest.GZipTest.Core.Classes
             }
         }
 
+        /// <summary>
+        /// Извлекает <paramref name="count"/> фрагментов из буфера.
+        /// </summary>
+        /// <param name="count">Кол-во извлекаемых фрагментов</param>
+        /// <returns>Коллекция извлеченных фрагментов</returns>
         public List<PieceOf> Fetch(int count = 1)
         {
             try
@@ -60,10 +78,15 @@ namespace SkillsTest.GZipTest.Core.Classes
                     throw new ArgumentOutOfRangeException("count", "Значение должно быть положительным числом");
                 }
 
-                var result = new List<PieceOf>();
+                List<PieceOf> result = null;
 
                 lock (this.SyncRoot)
                 {
+                    //TODO: переделать
+                    result = new List<PieceOf>(this.buffer.OrderByDescending(x => x.Key).Select(x => x.Value).Take(count).ToList());
+
+                    /*
+
                     int lastIndex = this.buffer.Count - 1;
                     int firstIndex = lastIndex - count;
 
@@ -76,16 +99,16 @@ namespace SkillsTest.GZipTest.Core.Classes
                     {
                         result.Add(this.buffer.Values[i]);
                         this.buffer.RemoveAt(i);
+                    }*/
+
+                    foreach (var current in result)
+                    {
+                        this.buffer.Remove(this.GetKey(current));
                     }
 
                     if (result.Any())
                     {
                         this.BufferSize -= (ulong)result.Sum(x => (long)x.Length());
-                    }
-
-                    if (count == 1 && result.Count > 1)
-                    {
-                        var a = 1;
                     }
                 }
 

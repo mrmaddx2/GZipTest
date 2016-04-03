@@ -10,20 +10,48 @@ using SkillsTest.GZipTest.Core.Classes;
 
 namespace SkillsTest.GZipTest.Core
 {
+    /// <summary>
+    /// Обезличенный блок конвейера.
+    /// </summary>
     public abstract class MrAbstractBlock : IDisposable
     {
+        /// <summary>
+        /// Максимальное кол-во потоков обработки метода <see cref="MainAction"/>
+        /// </summary>
         public uint MaxThreads { get; protected set; }
+        /// <summary>
+        /// Время ожидания потока при считывании данных из источников
+        /// </summary>
         public int SleepTime { get; protected set; }
 
+        /// <summary>
+        /// Блоки-Источники информации
+        /// </summary>
         private ICollection<MrAbstractBlock> sources = new List<MrAbstractBlock>();
+        /// <summary>
+        /// Целевые блоки данного экземпляра
+        /// </summary>
         private ICollection<MrAbstractBlock> targets = new List<MrAbstractBlock>();
+        /// <summary>
+        /// Внутренний буфер блока обработки
+        /// </summary>
         private BlockBuffer buffer = new BlockBuffer();
+        /// <summary>
+        /// Коллекция активных потоков
+        /// </summary>
         private ThreadDictionary ThreadDictionary = new ThreadDictionary();
+
         private readonly object correctorDummy = new object();
+        /// <summary>
+        /// Корректор производительности
+        /// </summary>
         private PerformanceCorrector PerformanceCorrector;
 
         private ProjectStatusEnum status;
         private readonly object statusDummy = new object();
+        /// <summary>
+        /// Текущий статус блока
+        /// </summary>
         public ProjectStatusEnum Status
         {
             get
@@ -42,6 +70,10 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
+        /// <summary>
+        /// Генерирует отчет о внутреннем состоянии блока конвейера
+        /// </summary>
+        /// <returns>Отчет</returns>
         public PerformanceReport GenerateReport()
         {
             var result = new PerformanceReport()
@@ -56,7 +88,11 @@ namespace SkillsTest.GZipTest.Core
             return result;
         }
 
-
+        /// <summary>
+        /// Передает блоку указания по корректировке производительности. Возвращает экземпляр предыдущего корректировщика, если таковой был.
+        /// </summary>
+        /// <param name="corrector">Указания корректировки производительности</param>
+        /// <returns></returns>
         public PerformanceCorrector SetPerformanceCorrector(PerformanceCorrector corrector)
         {
             lock (correctorDummy)
@@ -77,17 +113,22 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
+        /// <summary>
+        /// Записывает в буфер фрагмент данных.
+        /// После записи производится корректировка производительности.
+        /// </summary>
+        /// <param name="value"></param>
         protected virtual void AddToBuffer(PieceOf value)
         {
-            if (value.Length() == 0)
-            {
-                var a = 1;
-            }
-
             this.buffer.Add(value);
             this.ExecPerformanceCorrector();
         }
 
+
+        /// <summary>
+        /// Корректировка производительности.
+        /// Если блоку предписано изменить интенсивность работы
+        /// </summary>
         protected void ExecPerformanceCorrector()
         {
             if (this.PerformanceCorrector != null)
@@ -96,6 +137,12 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
+        /// <summary>
+        /// Считать из источников <paramref name="count"/> фрагментов данных.
+        /// Если в данный момент такого числа фрагментов в источниках нет - возвращаем что есть.
+        /// </summary>
+        /// <param name="count">Максимальное кол-во считываемых фрагментов</param>
+        /// <returns>Коллекция фрагментов данных</returns>
         protected List<PieceOf> ReadFromSources(int count = 1)
         {
             List<PieceOf> result = new List<PieceOf>();
@@ -120,25 +167,49 @@ namespace SkillsTest.GZipTest.Core
             return result;
         }
 
+
+        /// <summary>
+        /// Версия <see cref="ReadFromSources"/> для возврата одного фрагмента.
+        /// </summary>
+        /// <returns>Фрагмент данных</returns>
         protected PieceOf ReadFromSourcesSingle()
         {
             return this.ReadFromSources(1).SingleOrDefault();
         }
 
+        /// <summary>
+        /// Отдать <paramref name="count"/> фрагментов данных.
+        /// Если в данный момент такого числа фрагментов нет - возвращаем что есть.
+        /// </summary>
+        /// <param name="count">Максимальное кол-во считываемых фрагментов</param>
+        /// <returns>Коллекция фрагментов данных</returns>
         protected List<PieceOf> Receive(int count = 1)
         {
             return this.buffer.Fetch(count);
         }
 
-
+        /// <summary>
+        /// Стартует работу блока
+        /// </summary>
         public void Start()
         {
             DoMainWork(MainAction, this.MaxThreads);
         }
 
+        /// <summary>
+        /// Главный метод блока конвейера.
+        /// Он будет выполнен в <see cref="MaxThreads"/> потоков.
+        /// Внутри необходимо вызвать <see cref="PostDone"/> для сигнализации о завершении работы блока.
+        /// Все прочие работы берет на себя класс-родитель.
+        /// </summary>
         protected abstract void MainAction();
 
         private readonly object _mainWorkDummy = new object();
+        /// <summary>
+        /// Оборачивает <paramref name="mainWorkAction"/> во все необходимые для функционирования блока операции и выполняет в <paramref name="maxThreads"/> раз параллельно.
+        /// </summary>
+        /// <param name="mainWorkAction"></param>
+        /// <param name="maxThreads"></param>
         private void DoMainWork(Action mainWorkAction, uint maxThreads = 1)
         {
             lock (_mainWorkDummy)
@@ -193,6 +264,11 @@ namespace SkillsTest.GZipTest.Core
         }
 
         private readonly object postErrorDummy = new object();
+        /// <summary>
+        /// Сообщаем текущему и всем его целевым блокам об обнаруженном исключении.
+        /// </summary>
+        /// <param name="exception">исключение</param>
+        /// <returns>исключение</returns>
         protected virtual Exception PostError(Exception exception)
         {
             lock (postErrorDummy)
@@ -220,7 +296,9 @@ namespace SkillsTest.GZipTest.Core
             return exception;
         }
 
-
+        /// <summary>
+        /// Завершили ли свою работы все источники данного блока конвейера
+        /// </summary>
         public virtual bool AllSourcesDone
         {
             get
@@ -234,6 +312,10 @@ namespace SkillsTest.GZipTest.Core
 
 
         private readonly object postStartDummy = new object();
+        /// <summary>
+        /// Сообщаем текущему и всем связанным блокам, что надо бы стартовать работу.
+        /// </summary>
+        /// <returns>Статус после завершения метода</returns>
         private ProjectStatusEnum PostStart()
         {
             lock (postStartDummy)
@@ -271,6 +353,10 @@ namespace SkillsTest.GZipTest.Core
         }
 
         private readonly object postCancelDummy = new object();
+        /// <summary>
+        /// Сообщаем текущему и всем связанным блокам, что всем спасибо - все свободны. Нас отменили.
+        /// </summary>
+        /// <returns>Статус после завершения метода</returns>
         protected virtual ProjectStatusEnum PostCancel()
         {
             lock (postCancelDummy)
@@ -303,6 +389,10 @@ namespace SkillsTest.GZipTest.Core
 
 
         private readonly object postDoneDummy = new object();
+        /// <summary>
+        /// Сообщаем текущему и всем связанным блокам, что работа была успешно завершена.
+        /// </summary>
+        /// <returns>Статус после завершения метода</returns>
         protected virtual ProjectStatusEnum PostDone()
         {
             lock (postDoneDummy)
@@ -337,6 +427,10 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
+        /// <summary>
+        /// привязывает к текущему блоку блок из <paramref name="value"/> в качестве целевого
+        /// </summary>
+        /// <param name="value">Блок данных</param>
         public virtual void AddTarget(MrAbstractBlock value)
         {
             lock ((this.targets as ICollection).SyncRoot)
@@ -350,6 +444,10 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
+        /// <summary>
+        /// Удаляет <paramref name="value"/> из списка целевых блоков
+        /// </summary>
+        /// <param name="value">Блок данных</param>
         public virtual void RemoveTarget(MrAbstractBlock value)
         {
             lock ((this.targets as ICollection).SyncRoot)
@@ -363,6 +461,10 @@ namespace SkillsTest.GZipTest.Core
         }
 
 
+        /// <summary>
+        /// привязывает к текущему блоку блок из <paramref name="value"/> в качестве источника
+        /// </summary>
+        /// <param name="value">Блок данных</param>
         public virtual void AddSource(MrAbstractBlock value)
         {
             lock ((this.sources as ICollection).SyncRoot)
@@ -375,6 +477,10 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
+        /// <summary>
+        /// Удаляет <paramref name="value"/> из списка источников
+        /// </summary>
+        /// <param name="value">Блок данных</param>
         public virtual void RemoveSource(MrAbstractBlock value)
         {
             lock ((this.sources as ICollection).SyncRoot)

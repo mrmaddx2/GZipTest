@@ -29,13 +29,16 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
-                var tmpBodyStream = new MemoryStream();
+                using(var tmpBodyStream = new MemoryStream())
                 using (GZipStream compressedzipStream = new GZipStream(tmpBodyStream, CompressionMode.Compress, true))
                 {
                     byte[] tmpBuffer = PieceOfSource.GetBodyBuffer(true);
                     compressedzipStream.Write(tmpBuffer, 0, tmpBuffer.Length);
                     compressedzipStream.Close();
+
                     PieceOfSource.ResetBody(tmpBodyStream);
+
+                    tmpBodyStream.Close();
                 }
             }
             catch (Exception exception)

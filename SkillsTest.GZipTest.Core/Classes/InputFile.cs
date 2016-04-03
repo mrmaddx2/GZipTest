@@ -154,19 +154,20 @@ namespace SkillsTest.GZipTest.Core
                     }
                     else
                     {
-                        long fragmentLength = fragmentSize;
-
-                        if (fragmentLength + this.Body.Position > this.Body.Length)
+                        using (var tmpMemStream = new MemoryStream())
                         {
-                            fragmentLength = this.Body.Length - this.Body.Position;
+                            //Отщипываем по кусочку фиксированной длины
+                            //Отличаться от прочих может лишь последний кусочек
+                            var buffer = new byte[fragmentSize];
+                            var nRead = Body.Read(buffer, 0, buffer.Length);
+
+                            tmpMemStream.Write(buffer, 0, nRead);
+
+                            result.ResetBody(tmpMemStream);
+                            tmpMemStream.Close();
                         }
 
-                        //Отщипываем по кусочку фиксированной длины
-                        //Отличаться от прочих может лишь последний кусочек
-                        var buffer = new byte[fragmentLength];
-                        var nRead = Body.Read(buffer, 0, buffer.Length);
-
-                        result.ResetBody(buffer);
+                        
                     }
 
                     this.Body.Flush();
