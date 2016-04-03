@@ -67,13 +67,18 @@ namespace SkillsTest.GZipTest.Core
 
             while (this.Status == ProjectStatusEnum.InProgress)
             {
-                uint cntOfPieces = (uint)(this.AllSourcesDone ? 100 : 10);
+                var cntOfPieces = this.AllSourcesDone ? 100 : 10;
 
                 var source = this.ReadFromSources(cntOfPieces);
                 if (source.Any())
                 {
+                    if (this.PercentCompletedInt >= 85)
+                    {
+                        var a = 1;
+                    }
                     this.outputFile.AddPiece(source);
                     this.ReportProgress(source.Sum(x => x.PercentOfSource));
+                    
                 }
 
                 if (AllSourcesDone)
@@ -103,6 +108,19 @@ namespace SkillsTest.GZipTest.Core
             var result = base.PostDone();
 
             if (result == ProjectStatusEnum.Done)
+            {
+                this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(null, this.Status == ProjectStatusEnum.Canceled, Thread.CurrentThread));
+            }
+
+            return result;
+        }
+
+
+        protected override ProjectStatusEnum PostCancel()
+        {
+            var result = base.PostCancel();
+
+            if (result == ProjectStatusEnum.Canceled)
             {
                 this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(null, this.Status == ProjectStatusEnum.Canceled, Thread.CurrentThread));
             }

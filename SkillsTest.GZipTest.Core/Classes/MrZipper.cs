@@ -21,19 +21,22 @@ namespace SkillsTest.GZipTest.Core
         #endregion
 
         #region Properties & fields       
-
+        private MrAbstractBlock activeBlock;
         #endregion
-
-        public MrZipper()
-        {
-        }
 
         /// <summary>
         /// Отменить выполнение текущей асинхронной операции
         /// </summary>
         public void CancelConvertAsync()
         {
-            
+            if (this.activeBlock != null)
+            {
+                this.activeBlock.CancelOperation();
+            }
+            else
+            {
+                throw new Exception("В данный момент конвертация не запущена.");
+            }
         }
 
         /// <summary>
@@ -47,6 +50,8 @@ namespace SkillsTest.GZipTest.Core
             {
                 handler(e);
             }
+
+            this.activeBlock = null;
         }
 
         private void OnProgressChanged(ConvertProgressChangedEventArgs e)
@@ -62,10 +67,13 @@ namespace SkillsTest.GZipTest.Core
         public void ConvertAsync(string inputFilePath, string outputFilePath, CompressionMode mode, long? compressFragmentSize = null)
         {
             var source = new MrSource();
+
+            this.activeBlock = source;
+
             var action = new MrConverter(mode);
             var result = new MrTarget(outputFilePath);
             var dispatcher = new MrsDispatcher();
-            dispatcher.Completed += DispatcherOnCompleted;
+            dispatcher.Completed += ResultOnConvertAsyncCompleted;
 
             dispatcher.AddSource(source);
             dispatcher.AddSource(action);
@@ -78,11 +86,6 @@ namespace SkillsTest.GZipTest.Core
             result.ProgressChanged += OnProgressChanged;
 
             source.Post(inputFilePath);
-        }
-
-        private void DispatcherOnCompleted(object sender, AsyncCompletedEventArgs e)
-        {
-            this.OnConvertAsyncCompleted(e);
         }
 
         private void ResultOnConvertAsyncCompleted(object sender, AsyncCompletedEventArgs e)

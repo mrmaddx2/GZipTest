@@ -25,10 +25,8 @@ namespace SkillsTest.GZipTest.Core
         }
 
         public InputFile(string inputFilePath)
-            : base(inputFilePath)
+            : base(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read)
         {
-            this.Body = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-
             var prevPosition = this.Body.Position;
 
             var tmpArray = new byte[gZipMagicheader.Length];
@@ -92,7 +90,8 @@ namespace SkillsTest.GZipTest.Core
                         setStreamPosition = this.Body.Position;
                     }
 
-                    result = new PieceOf(Interlocked.Increment(ref this.CurrentSeqNo));
+                    result = new PieceOf(this.CurrentSeqNo);
+                    Interlocked.Increment(ref this.CurrentSeqNo);
 
                     //Нужно отщипнуть кусочек необходимомго размера
 

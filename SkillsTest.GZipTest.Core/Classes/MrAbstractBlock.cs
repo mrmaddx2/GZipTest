@@ -96,15 +96,15 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        protected HashSet<PieceOf> ReadFromSources(uint count = 1)
+        protected List<PieceOf> ReadFromSources(int count = 1)
         {
-            HashSet<PieceOf> result = new HashSet<PieceOf>();
+            List<PieceOf> result = new List<PieceOf>();
 
             try
             {
                 foreach (var currentSource in sources)
                 {
-                    result.UnionWith(currentSource.Receive(Convert.ToUInt32(count - result.Count)));
+                    result.AddRange(currentSource.Receive(count - result.Count));
 
                     if (result.Count >= count)
                     {
@@ -125,7 +125,7 @@ namespace SkillsTest.GZipTest.Core
             return this.ReadFromSources(1).SingleOrDefault();
         }
 
-        protected HashSet<PieceOf> Receive(uint count = 1)
+        protected List<PieceOf> Receive(int count = 1)
         {
             return this.buffer.Fetch(count);
         }
@@ -263,6 +263,42 @@ namespace SkillsTest.GZipTest.Core
 
                 return this.Status;
             }
+        }
+
+        public bool CancelOperation()
+        {
+            return PostCancel() == ProjectStatusEnum.Canceled;
+        }
+
+        private readonly object postCancelDummy = new object();
+        protected virtual ProjectStatusEnum PostCancel()
+        {
+            lock (postCancelDummy)
+            {
+                try
+                {
+                    if (this.Status == ProjectStatusEnum.InProgress)
+                    {
+                        this.Status = ProjectStatusEnum.Canceled;
+
+                        foreach (var current in this.targets.ToList())
+                        {
+                            current.PostCancel();
+                        }
+
+                        foreach (var current in this.sources.ToList())
+                        {
+                            current.PostCancel();
+                        }
+                    }
+                }
+                catch (Exception exception)
+                {
+                    this.PostError(exception);
+                }
+            }
+
+            return this.Status;
         }
 
 

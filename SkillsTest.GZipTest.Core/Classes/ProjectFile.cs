@@ -8,19 +8,26 @@ namespace SkillsTest.GZipTest.Core
 {
     public abstract class ProjectFile : IProjectFile
     {
+        protected readonly BufferedStream Body;
+
         /// <summary>
         /// Поток с телом файла.
         /// Блокируем файл на время существования экземпляра.
         /// </summary>
-        protected virtual FileStream Body { get; set; }
+        private FileStream HiddenBody { get; set; }
         public long Length()
         {
-            return this.Body.Length;
+            return this.HiddenBody.Length;
         }
 
-        public ProjectFile(string inputFilePath)
+        public ProjectFile(string inputFilePath, FileMode mode, FileAccess access, FileShare share)
         {
             this.CurrentSeqNo = 0;
+            this.HiddenBody = new FileStream(inputFilePath, mode, access, share);
+
+            this.Body = new BufferedStream(this.HiddenBody);
+
+            
         }
 
         public abstract ProjectFileTypeEnum FileType { get; protected set; }
@@ -55,7 +62,16 @@ namespace SkillsTest.GZipTest.Core
                     this.Body.Close();
                 }
                 this.Body.Dispose();
-                this.Body = null;
+            }
+
+            if (this.HiddenBody != null)
+            {
+                if (this.HiddenBody.CanRead || this.HiddenBody.CanWrite || this.HiddenBody.CanSeek)
+                {
+                    this.HiddenBody.Close();
+                }
+                this.HiddenBody.Dispose();
+                this.HiddenBody = null;
             }
         }
     }
