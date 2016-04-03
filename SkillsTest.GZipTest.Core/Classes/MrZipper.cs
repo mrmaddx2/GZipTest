@@ -69,6 +69,7 @@ namespace SkillsTest.GZipTest.Core
 
             dispatcher.AddSource(source);
             dispatcher.AddSource(action);
+            dispatcher.AddSource(result);
 
             source.AddTarget(action);
             action.AddTarget(result);

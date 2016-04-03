@@ -98,7 +98,7 @@ namespace SkillsTest.GZipTest.Core
 
         protected HashSet<PieceOf> ReadFromSources(uint count = 1)
         {
-            var result = new HashSet<PieceOf>();
+            HashSet<PieceOf> result = new HashSet<PieceOf>();
 
             try
             {

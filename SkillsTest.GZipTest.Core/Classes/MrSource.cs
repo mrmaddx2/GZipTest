@@ -36,13 +36,16 @@ namespace SkillsTest.GZipTest.Core
             PieceOf newPiece;
             while ((newPiece = this.InputFile.Fetch(inputFragmentSize: null)) != null && this.Status == ProjectStatusEnum.InProgress)
             {
-                this.AddToBuffer(newPiece);
+                this.AddToBuffer((PieceOf)newPiece);
             }
 
             if (this.PostDone() != ProjectStatusEnum.Done)
             {
                 throw new InvalidAsynchronousStateException(string.Format("После окончания считывания статус не был переведен в {0}", ProjectStatusEnum.Done));
             }
+
+            this.InputFile.Dispose();
+            this.InputFile = null;
         }
     }
 }

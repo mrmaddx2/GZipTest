@@ -46,25 +46,21 @@ namespace SkillsTest.GZipTest.Core
                 var avalMem = Convert.ToDecimal(CI.AvailablePhysicalMemory) /
                               Convert.ToDecimal(CI.TotalPhysicalMemory) * 100;
 
-                List<PerformanceReport> sourceReports;
-                List<PerformanceReport> converterReports;
-                lock (workersDummy)
-                {
-                    //Соберем отчеты источников
-                    sourceReports = workers.OfType<MrSource>().Select(x => x.GenerateReport()).ToList();
-
-                    //Соберем отчеты преобразователей
-                    converterReports = workers.OfType<MrConverter>().Select(x => x.GenerateReport()).ToList();
-                }
-
                 //Начинаются проблемы
                 if (avalMem < 50)
                 {
+                    List<PerformanceReport> controlledReports = null;
+                    lock (workersDummy)
+                    {
+                        //Соберем отчеты источников
+                        controlledReports = workers.Where(x => x.Status == ProjectStatusEnum.InProgress && (x is MrSource || x is MrConverter)).Select(x => x.GenerateReport()).ToList();
+                    }
+
                     //50 процентов от занятой приложением памяти
                     var maxMemoryUsage = (ulong)Math.Floor(Convert.ToDouble(currentProc.PrivateMemorySize64) * 0.25);
 
                     var problemSources =
-                        sourceReports.Union(converterReports)
+                        controlledReports
                             .Where(
                                 x =>
                                     x.BufferSize > maxMemoryUsage &&

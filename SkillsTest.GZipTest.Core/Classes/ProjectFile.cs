@@ -50,6 +50,10 @@ namespace SkillsTest.GZipTest.Core
         {
             if (this.Body != null)
             {
+                if (this.Body.CanRead || this.Body.CanWrite || this.Body.CanSeek)
+                {
+                    this.Body.Close();
+                }
                 this.Body.Dispose();
                 this.Body = null;
             }

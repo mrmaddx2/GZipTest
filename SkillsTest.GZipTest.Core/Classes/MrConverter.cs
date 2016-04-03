@@ -54,23 +54,21 @@ namespace SkillsTest.GZipTest.Core
         {
             try
             {
-                var tmpLength = PieceOfSource.Length();
-
-                using (var tmpStream = PieceOfSource.GetBodyStream(true))
+                using (var sourceStream = PieceOfSource.GetBodyStream(true))
+                using (var decompressedStream = new MemoryStream())
                 {
-                    var tmpBody = tmpStream.ToArray();
-
-
-                    using (GZipStream compressedzipStream = new GZipStream(tmpStream, CompressionMode.Decompress, false))
+                    using (GZipStream compressedzipStream = new GZipStream(sourceStream, CompressionMode.Decompress, false))
                     {
-                        compressedzipStream.Flush();
-
-                        byte[] buffer = new byte[tmpBody.Length];
+                        byte[] buffer = new byte[512000];
                         int nRead;
                         while ((nRead = compressedzipStream.Read(buffer, 0, buffer.Length)) > 0)
                         {
-                            PieceOfSource.AddToBody(buffer, 0, nRead);
+                            decompressedStream.Write(buffer, 0, nRead);
                         }
+
+                        compressedzipStream.Flush();
+
+                        PieceOfSource.ResetBody(decompressedStream);
 
                         if (PieceOfSource.Length() == 0)
                         {
@@ -79,6 +77,7 @@ namespace SkillsTest.GZipTest.Core
                         }
 
                         compressedzipStream.Close();
+                        decompressedStream.Close();
                     }
                 }
             }
@@ -97,20 +96,20 @@ namespace SkillsTest.GZipTest.Core
 
             while (this.Status == ProjectStatusEnum.InProgress)
             {
-                var source = this.ReadFromSourcesSingle();
+                PieceOf source = this.ReadFromSourcesSingle();
                 if (source != null)
                 {
                     switch (mode)
                     {
                         case CompressionMode.Compress:
-                            this.Compress(source);
+                            this.Compress((PieceOf)source);
                             break;
                         case CompressionMode.Decompress:
-                            this.Decompress(source);
+                            this.Decompress((PieceOf)source);
                             break;
                     }
 
-                    this.AddToBuffer(source);
+                    this.AddToBuffer((PieceOf)source);
                 }
 
                 if (source == null)

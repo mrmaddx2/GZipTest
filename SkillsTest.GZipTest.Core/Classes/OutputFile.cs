@@ -47,11 +47,6 @@ namespace SkillsTest.GZipTest.Core
             {
                 this.Pieces.UnionWith(value);
 
-                if (this.Pieces.Count >= 100)
-                {
-                    var a = 1;
-                }
-
                 var actualSeqNo = this.CurrentSeqNo + 1;
                 if (value.Any(x => x.SeqNo == actualSeqNo))
                 {

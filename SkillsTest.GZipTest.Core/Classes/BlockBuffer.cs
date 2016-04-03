@@ -8,7 +8,7 @@ namespace SkillsTest.GZipTest.Core.Classes
     public class BlockBuffer
     {
         public readonly object SyncRoot = new object();
-        private HashSet<PieceOf> buffer = new HashSet<PieceOf>();
+        private SortedDictionary<int, PieceOf> buffer = new SortedDictionary<int, PieceOf>();
 
         public uint Count
         {
@@ -27,7 +27,7 @@ namespace SkillsTest.GZipTest.Core.Classes
         {
             lock (this.SyncRoot)
             {
-                this.buffer.Add(value);
+                this.buffer.Add(value.GetHashCode(), value);
                 this.BufferSize += value.Length();
             }
         }
@@ -38,9 +38,13 @@ namespace SkillsTest.GZipTest.Core.Classes
 
             lock (this.SyncRoot)
             {
-                result.UnionWith(this.buffer.OrderBy(x => x.SeqNo).Take((int)count));
+                result.UnionWith(this.buffer.Values.Take((int)count));
 
-                this.buffer.ExceptWith(result);
+                foreach (var current in result)
+                {
+                    this.buffer.Remove(current.GetHashCode());
+                }
+
                 this.BufferSize -= (ulong)result.Sum(x => (long)x.Length());
             }
 

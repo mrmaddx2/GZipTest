@@ -67,11 +67,19 @@ namespace SkillsTest.GZipTest.Core
 
             while (this.Status == ProjectStatusEnum.InProgress)
             {
-                var source = this.ReadFromSources(10);
+                uint cntOfPieces = (uint)(this.AllSourcesDone ? 100 : 10);
+
+                var source = this.ReadFromSources(cntOfPieces);
                 if (source.Any())
                 {
                     this.outputFile.AddPiece(source);
                     this.ReportProgress(source.Sum(x => x.PercentOfSource));
+                }
+
+                if (AllSourcesDone)
+                {
+                    var a = 1;
+                    var b = this.GenerateReport();
                 }
 
                 if (!source.Any())
@@ -79,6 +87,11 @@ namespace SkillsTest.GZipTest.Core
                     if (this.PostDone() != ProjectStatusEnum.Done)
                     {
                         Thread.Sleep(this.SleepTime);
+                    }
+                    else
+                    {
+                        this.outputFile.Dispose();
+                        this.outputFile = null;
                     }
                 }
             }
@@ -156,6 +169,17 @@ namespace SkillsTest.GZipTest.Core
             {
                 OnProgressChanged(new ConvertProgressChangedEventArgs(tmpPerc, Thread.CurrentThread.ManagedThreadId, this.AsyncOpStartDttm));
             }
+        }
+
+
+        public override void AddTarget(MrAbstractBlock value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void RemoveTarget(MrAbstractBlock value)
+        {
+            throw new NotSupportedException();
         }
     }
 }

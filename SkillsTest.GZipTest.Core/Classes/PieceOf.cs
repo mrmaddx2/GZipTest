@@ -9,7 +9,7 @@ namespace SkillsTest.GZipTest.Core
     public class PieceOf : IDisposable
     {
 
-        private MemoryStream Body { get; set; }
+        private byte[] Body { get; set; }
 
         public long SeqNo { get; protected set; }
         public decimal PercentOfSource { get; set; }
@@ -51,47 +51,18 @@ namespace SkillsTest.GZipTest.Core
         {
             if (this.Body != null)
             {
-                if (this.Body.CanRead || this.Body.CanWrite)
-                {
-                    this.Body.Flush();
-                    this.Body.Close();
-                }
-                this.Body.Dispose();
                 this.Body = null;
-            }
-        }
-
-        
-        public void AddToBody(byte[] value)
-        {
-            this.AddToBody(value, 0, value.Length);
-        }
-
-        public void AddToBody(byte[] value, int offset, int count)
-        {
-            try
-            {
-                if (this.Body == null)
-                {
-                    ResetBody(new MemoryStream());
-                }
-
-                this.Body.Position = this.Body.Length;
-                this.Body.Write(value, offset, count);
-            }
-            catch (Exception exception)
-            {
-                throw new Exception(
-                    string.Format("Добавление данных к телу кусочка {0}", this.SeqNo),
-                    exception);
             }
         }
 
         public void ResetBody(MemoryStream value)
         {
-            this.Body = value;
+            this.Body = value.ToArray();
+        }
 
-            this.Body.Position = 0;
+        public void ResetBody(byte[] value)
+        {
+            this.Body = value.ToArray();
         }
 
         public MemoryStream GetBodyStream(bool cleanBodyAfter)

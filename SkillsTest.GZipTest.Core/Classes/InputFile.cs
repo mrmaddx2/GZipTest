@@ -112,30 +112,41 @@ namespace SkillsTest.GZipTest.Core
                         long? positionOfNextPart = null;
                         //Костыль для предотвращения петли, т.к. начинаем мы читать всегда с магического числа
                         bool isFirstRead = true;
-                        while (((nRead = Body.Read(buffer, 0, buffer.Length)) > 0) && positionOfNextPart == null)
+
+                        using (var tmpMemStream = new MemoryStream())
                         {
-                            long tmpIndex;
-                            for (tmpIndex = 0; tmpIndex <= nRead - 1; tmpIndex++)
+                            while (((nRead = Body.Read(buffer, 0, buffer.Length)) > 0) && positionOfNextPart == null)
                             {
-                                if (buffer[tmpIndex] == gZipMagicheader[matchesCount] && !isFirstRead)
+                                long tmpIndex;
+                                for (tmpIndex = 0; tmpIndex <= nRead - 1; tmpIndex++)
                                 {
-                                    matchesCount++;
-                                }
-                                else
-                                {
-                                    matchesCount = 0;
+                                    if (buffer[tmpIndex] == gZipMagicheader[matchesCount] && !isFirstRead)
+                                    {
+                                        matchesCount++;
+                                    }
+                                    else
+                                    {
+                                        matchesCount = 0;
+                                    }
+
+                                    if (matchesCount == gZipMagicheader.Length)
+                                    {
+                                        positionOfNextPart = this.Body.Position - (nRead - 1) + tmpIndex -
+                                                             gZipMagicheader.Length;
+                                        break;
+                                    }
+                                    isFirstRead = false;
                                 }
 
-                                if (matchesCount == gZipMagicheader.Length)
-                                {
-                                    positionOfNextPart = this.Body.Position - (nRead - 1) + tmpIndex - gZipMagicheader.Length;
-                                    break;
-                                }
-                                isFirstRead = false;
+
+                                tmpMemStream.Write(buffer, 0,
+                                    (int) (positionOfNextPart == null ? nRead : (tmpIndex + 1) - gZipMagicheader.Length));
                             }
-                            
-                            result.AddToBody(buffer, 0, (int)(positionOfNextPart == null ? nRead : (tmpIndex + 1) - gZipMagicheader.Length));
+
+                            result.ResetBody(tmpMemStream);
+                            tmpMemStream.Close();
                         }
+                        
 
                         if (positionOfNextPart != null)
                         {
@@ -144,11 +155,19 @@ namespace SkillsTest.GZipTest.Core
                     }
                     else
                     {
+                        long fragmentLength = fragmentSize;
+
+                        if (fragmentLength + this.Body.Position > this.Body.Length)
+                        {
+                            fragmentLength = this.Body.Length - this.Body.Position;
+                        }
+
                         //Отщипываем по кусочку фиксированной длины
                         //Отличаться от прочих может лишь последний кусочек
-                        var buffer = new byte[fragmentSize];
+                        var buffer = new byte[fragmentLength];
                         var nRead = Body.Read(buffer, 0, buffer.Length);
-                        result.AddToBody(buffer, 0, nRead);
+
+                        result.ResetBody(buffer);
                     }
 
                     this.Body.Flush();
@@ -163,8 +182,7 @@ namespace SkillsTest.GZipTest.Core
                 var tmpLength = result.Length();
                 if (tmpLength > 0)
                 {
-                    result.PercentOfSource =
-                        Convert.ToDecimal(tmpLength) / Convert.ToDecimal(this.Length()) * 100;
+                    result.PercentOfSource = Convert.ToDecimal(tmpLength)/Convert.ToDecimal(this.Length())*100;
                     return result;
                 }
                 else if(Body.Position != Body.Length)
