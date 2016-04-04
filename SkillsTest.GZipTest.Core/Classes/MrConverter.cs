@@ -60,7 +60,7 @@ namespace SkillsTest.GZipTest.Core
                 using (var sourceStream = PieceOfSource.GetBodyStream(true))
                 using (var decompressedStream = new MemoryStream())
                 {
-                    using (GZipStream compressedzipStream = new GZipStream(sourceStream, CompressionMode.Decompress, false))
+                    using (GZipStream compressedzipStream = new GZipStream(sourceStream, CompressionMode.Decompress, true))
                     {
                         byte[] buffer = new byte[512000];
                         int nRead;
@@ -76,6 +76,7 @@ namespace SkillsTest.GZipTest.Core
                         if (PieceOfSource.Length() == 0)
                         {
                             //TODO: очень странная проблема. На выходе упаковщик не отдает ничего
+                            //А иногда ругается: Неизвестный тип блока. Поток может быть поврежден
                             var a = 1;
                         }
 

@@ -24,11 +24,15 @@ namespace SkillsTest.GZipTest.Core
             return this.Body.Length;
         }
 
+        protected readonly int ClusterSize;
+
         public ProjectFile(string inputFilePath, FileMode mode, FileAccess access, FileShare share)
         {
             this.CurrentSeqNo = 0;
 
-            this.Body = new FileStream(inputFilePath, mode, access, share, ProcessInfo.GetClusterSize(inputFilePath));
+            this.ClusterSize = ProcessInfo.GetClusterSize(inputFilePath);
+
+            this.Body = new FileStream(inputFilePath, mode, access, share, this.ClusterSize);
             //this.Body = new BufferedStream(this.Body, ProcessInfo.GetClusterSize(inputFilePath));
         }
 

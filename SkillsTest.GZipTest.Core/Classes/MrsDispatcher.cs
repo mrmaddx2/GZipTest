@@ -62,11 +62,13 @@ namespace SkillsTest.GZipTest.Core
                         controlledReports = workers.Where(x => x.Status == ProjectStatusEnum.InProgress && (x is MrSource || x is MrConverter)).Select(x => x.GenerateReport()).ToList();
                     }
 
+                    var buffersSum = controlledReports.Sum(x => (long)x.BufferSizeMb);
+
                     //Проблемными считаем источники в буфере которых находится данных больше чем половина оставшейся свободной оперативки
                     var problemSources =
                         controlledReports
                             .Where(
-                                x => x.BufferSizeMb >= avalMb * 0.5 && x.Block is MrSource)
+                                x => buffersSum >= avalMb * 0.4 && x.Block is MrSource)
                             .ToList();
 
                     if (problemSources.Any())
@@ -84,7 +86,7 @@ namespace SkillsTest.GZipTest.Core
                 }
 
                 //Делать нечего - зовем на помощь сборку мусора
-                if (avalMem <= 15)
+                if (avalMem <= 20)
                 {
                     GC.Collect();
                 }
