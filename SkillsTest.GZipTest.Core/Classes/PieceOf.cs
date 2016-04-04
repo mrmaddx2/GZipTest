@@ -6,23 +6,23 @@ using System.Text;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class PieceOf
+    public class PieceOf : IDisposable
     {
 
-        protected MemoryStream Body { get; set; }
+        private byte[] Body { get; set; }
 
-        public int SeqNo { get; protected set; }
+        public long SeqNo { get; protected set; }
         public decimal PercentOfSource { get; set; }
 
-        public virtual long Length()
+        public ulong Length()
         {
-            return this.Body.Length;
+            return (ulong) (Body == null ? 0 : Body.Length);
         }
 
-        public PieceOf(int seqNo)
+        public PieceOf(long seqNo)
         {
-            this.Body = new MemoryStream();
             this.SeqNo = seqNo;
+            this.ResetBody(new MemoryStream());
         }
 
         /// <summary>
@@ -30,8 +30,13 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="cleanBodyAfter">Снимать ли лок с результата</param>
         /// <returns>Массив байт с результатом проделанной над исходным кусочком источника работы</returns>
-        public virtual byte[] GetBodyBuffer(bool cleanBodyAfter)
+        public byte[] GetBodyBuffer(bool cleanBodyAfter)
         {
+            if (this.Body == null)
+            {
+                this.ResetBody(new MemoryStream());
+            }
+
             var result = this.Body.ToArray();
 
             if (cleanBodyAfter)
@@ -42,46 +47,22 @@ namespace SkillsTest.GZipTest.Core
             return result;
         }
 
-        protected virtual void ReleaseResources()
+        private void ReleaseResources()
         {
             if (this.Body != null)
             {
-                this.Body.Dispose();
                 this.Body = null;
-            }
-        }
-
-        
-        public virtual void AddToBody(byte[] value)
-        {
-            this.AddToBody(value, 0, value.Length);
-        }
-
-        public void AddToBody(byte[] value, int offset, int count)
-        {
-            try
-            {
-                if (this.Body == null)
-                {
-                    ResetBody(new MemoryStream());
-                }
-
-                this.Body.Position = this.Body.Length;
-                this.Body.Write(value, offset, count);
-            }
-            catch (Exception exception)
-            {
-                throw new Exception(
-                    string.Format("Добавление данных к телу кусочка {0}", this.SeqNo),
-                    exception);
             }
         }
 
         public void ResetBody(MemoryStream value)
         {
-            this.Body = value;
+            this.Body = value.ToArray();
+        }
 
-            this.Body.Position = 0;
+        public void ResetBody(byte[] value)
+        {
+            this.Body = value.ToArray();
         }
 
         public MemoryStream GetBodyStream(bool cleanBodyAfter)
@@ -89,21 +70,14 @@ namespace SkillsTest.GZipTest.Core
             return new MemoryStream(GetBodyBuffer(cleanBodyAfter)) {Position = 0};
         }
 
-        public virtual void Dispose()
+        public void Dispose()
         {
             this.ReleaseResources();
         }
 
         public override int GetHashCode()
         {
-            return this.SeqNo;
-        }
-
-        public override bool Equals(object obj)
-        {
-            var tmp = obj as PieceOf;
-
-            return tmp != null && tmp.GetHashCode() == this.GetHashCode();
+            return (int)this.SeqNo;
         }
     }
 }

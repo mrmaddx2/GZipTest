@@ -3,10 +3,11 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace SkillsTest.GZipTest.Core
 {
-    public class ThreadDictionary : Dictionary<string, AsyncOperation>, IThreadDictionary
+    public class ThreadDictionary : Dictionary<int, Thread>
     {
         public Object SyncRoot { get; private set; }
 
@@ -15,34 +16,27 @@ namespace SkillsTest.GZipTest.Core
             this.SyncRoot = new object();
         }
 
-        public void SafeAdd(AsyncOperation value)
+        public void SafeAdd(Thread value)
         {
             lock (this.SyncRoot)
             {
-                base.Add(value.UserSuppliedState.ToString(), value);
+                base.Add(value.ManagedThreadId, value);
             }
         }
 
-        public void SafeRemove(AsyncOperation value)
+        public void SafeRemove(Thread value)
         {
             lock (this.SyncRoot)
             {
-                base.Remove(value.UserSuppliedState.ToString());
+                base.Remove(value.ManagedThreadId);
             }
         }
 
-        public void SafeRemoveAndComplete(AsyncOperation value)
+        public void SafeRemoveAndComplete(Thread value)
         {
             lock (this.SyncRoot)
             {
-                string key = value.UserSuppliedState.ToString();
-
-                if (this.ContainsKey(key))
-                {
-                    var operation = this[key];
-                    operation.OperationCompleted();
-                    this.Remove(key);
-                }
+                this.Remove(value.ManagedThreadId);
             }
         }
 
@@ -50,29 +44,38 @@ namespace SkillsTest.GZipTest.Core
         {
             lock (this.SyncRoot)
             {
-                foreach (var currentThread in this.Values)
-                {
-                    currentThread.OperationCompleted();
-                }
-                
                 base.Clear();
             }
         }
 
 
-        public int SafeCount
+        public uint SafeCount
         {
             get
             {
                 lock (this.SyncRoot)
                 {
-                    return this.Count;
+                    return (uint)this.Count;
                 }
             }
         }
 
 
-        public bool SafeIamTheLast(AsyncOperation value)
+        public bool SafeExists(Thread value)
+        {
+            return this.SafeExists(value.ManagedThreadId);
+        }
+
+        public bool SafeExists(int key)
+        {
+            lock (this.SyncRoot)
+            {
+                return this.ContainsKey(key);
+            }
+        }
+
+
+        public bool SafeIamTheLast(Thread value)
         {
             lock (this.SyncRoot)
             {

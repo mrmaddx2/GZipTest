@@ -21,17 +21,12 @@ namespace SkillsTest.GZipTest.Core
 
         static InputFile()
         {
-            DefaultFragmentSize = 512000;
+            DefaultFragmentSize = 4096 * 4096;
         }
 
-        protected int currentSeqNo;
-
         public InputFile(string inputFilePath)
-            : base(inputFilePath)
+            : base(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read)
         {
-            this.Body = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            this.currentSeqNo = 0;
-
             var prevPosition = this.Body.Position;
 
             var tmpArray = new byte[gZipMagicheader.Length];
@@ -50,7 +45,10 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public override ProjectFileTypeEnum FileType { get; protected set; }
+        /// <summary>
+        /// Тип файла
+        /// </summary>
+        public readonly ProjectFileTypeEnum FileType;
 
         /// <summary>
         /// Служит для получения очередного необработанного фрагмента файла-источника.
@@ -95,7 +93,8 @@ namespace SkillsTest.GZipTest.Core
                         setStreamPosition = this.Body.Position;
                     }
 
-                    result = new PieceOf(currentSeqNo);
+                    result = new PieceOf(this.CurrentSeqNo);
+                    Interlocked.Increment(ref this.CurrentSeqNo);
 
                     //Нужно отщипнуть кусочек необходимомго размера
 
@@ -109,36 +108,53 @@ namespace SkillsTest.GZipTest.Core
                         //Если в считанном буфере магического числа не оказалось - пишем в поток результата весь буфер
 
                         int matchesCount = 0;
-                        var buffer = new byte[fragmentSize];
+                        var buffer = new byte[this.ClusterSize];
                         long nRead;
                         //Позиция начала следующего кусочка. На эту позицию будет установлен поток после заполнения текущего результата
                         long? positionOfNextPart = null;
                         //Костыль для предотвращения петли, т.к. начинаем мы читать всегда с магического числа
                         bool isFirstRead = true;
-                        while (((nRead = Body.Read(buffer, 0, buffer.Length)) > 0) && positionOfNextPart == null)
+
+                        using (var tmpMemStream = new MemoryStream())
                         {
-                            long tmpIndex;
-                            for (tmpIndex = 0; tmpIndex <= nRead - 1; tmpIndex++)
+                            while (((nRead = Body.Read(buffer, 0, buffer.Length)) > 0) && positionOfNextPart == null)
                             {
-                                if (buffer[tmpIndex] == gZipMagicheader[matchesCount] && !isFirstRead)
+                                long tmpIndex;
+                                for (tmpIndex = 0; tmpIndex <= nRead - 1; tmpIndex++)
                                 {
-                                    matchesCount++;
-                                }
-                                else
-                                {
-                                    matchesCount = 0;
+                                    if (buffer[tmpIndex] == gZipMagicheader[matchesCount] && !isFirstRead)
+                                    {
+                                        matchesCount++;
+                                    }
+                                    else
+                                    {
+                                        matchesCount = 0;
+                                    }
+
+                                    if (matchesCount == gZipMagicheader.Length)
+                                    {
+                                        positionOfNextPart = this.Body.Position - (nRead - 1) + tmpIndex -
+                                                             gZipMagicheader.Length;
+                                        break;
+                                    }
+                                    isFirstRead = false;
                                 }
 
-                                if (matchesCount == gZipMagicheader.Length)
+                                var tmpBufferRead = (tmpIndex + 1) - gZipMagicheader.Length;
+
+                                if (tmpBufferRead <= 0)
                                 {
-                                    positionOfNextPart = this.Body.Position - (nRead - 1) + tmpIndex - gZipMagicheader.Length;
-                                    break;
+                                    tmpBufferRead = tmpIndex + 1;
                                 }
-                                isFirstRead = false;
+
+                                tmpMemStream.Write(buffer, 0,
+                                    (int) (positionOfNextPart == null ? nRead : tmpBufferRead));
                             }
-                            
-                            result.AddToBody(buffer, 0, (int)(positionOfNextPart == null ? nRead : (tmpIndex + 1) - gZipMagicheader.Length));
+
+                            result.ResetBody(tmpMemStream);
+                            tmpMemStream.Close();
                         }
+                        
 
                         if (positionOfNextPart != null)
                         {
@@ -147,12 +163,21 @@ namespace SkillsTest.GZipTest.Core
                     }
                     else
                     {
-                        //Отщипываем по кусочку фиксированной длины
-                        //Отличаться от прочих может лишь последний кусочек
-                        var buffer = new byte[fragmentSize];
-                        var nRead = Body.Read(buffer, 0, buffer.Length);
-                        result.AddToBody(buffer, 0, nRead);
+                        using (var tmpMemStream = new MemoryStream())
+                        {
+                            //Отщипываем по кусочку фиксированной длины
+                            //Отличаться от прочих может лишь последний кусочек
+                            var buffer = new byte[fragmentSize];
+                            var nRead = Body.Read(buffer, 0, buffer.Length);
+
+                            tmpMemStream.Write(buffer, 0, nRead);
+
+                            result.ResetBody(tmpMemStream);
+                            tmpMemStream.Close();
+                        }
                     }
+
+                    this.Body.Flush();
                 }
                 catch (Exception exception)
                 {
@@ -160,21 +185,16 @@ namespace SkillsTest.GZipTest.Core
                         string.Format("Получение кусочка источника. Начиная с позиции {0}",
                             setStreamPosition), exception);
                 }
-                finally
-                {
-                    if (this.Body != null && this.Body.CanRead)
-                    {
-                        this.Body.Flush();
-                    }
-                }
 
                 var tmpLength = result.Length();
                 if (tmpLength > 0)
                 {
-                    Interlocked.Increment(ref this.currentSeqNo);
-                    result.PercentOfSource =
-                        Convert.ToDecimal(tmpLength) / Convert.ToDecimal(this.Length()) * 100;
+                    result.PercentOfSource = Convert.ToDecimal(tmpLength)/Convert.ToDecimal(this.Length())*100;
                     return result;
+                }
+                else if(Body.Position != Body.Length)
+                {
+                    throw new Exception("Кусочек нулевой длины обнаружен до окончания потока");
                 }
                 else
                 {

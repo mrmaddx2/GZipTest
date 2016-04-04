@@ -99,7 +99,7 @@ namespace SkillsTest.GZipTest.App
                 }
                 else
                 {
-                    Console.WriteLine("Cancelled");
+                    Console.WriteLine("Canceled");
                     exitCode = 1;
                 }
             }

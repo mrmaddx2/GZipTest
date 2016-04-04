@@ -10,11 +10,6 @@ namespace SkillsTest.GZipTest.Core
 {
     public class MrTarget : MrAbstractBlock
     {
-        #region Delegates
-        protected delegate void ConvertPiecesActionHandler(
-            );
-        #endregion
-
         public event ProgressChangedEventHandler ProgressChanged;
         public event AsyncCompletedEventHandler ConvertAsyncCompleted;
 
@@ -59,71 +54,46 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
+
+        protected override void ExecPerformanceCorrector()
+        {
+            throw new NotSupportedException();
+        }
+
         public MrTarget(string value)
         {
             this.outputFile = new OutputFile(value);
         }
 
-        private readonly object startDummy = new object();
-        protected override void Start()
+        protected override void MainAction()
         {
-            lock (startDummy)
+            this.AsyncOpStartDttm = DateTime.Now;
+
+            Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+
+            while (this.Status == ProjectStatusEnum.InProgress)
             {
-                try
+                var cntOfPieces = this.AllSourcesDone ? 100 : 10;
+
+                var source = this.ReadFromSources(cntOfPieces);
+                if (source.Any())
                 {
-                    if (this.Status != ProjectStatusEnum.Unknown)
+                    this.outputFile.AddPiece(source);
+                    this.ReportProgress(source.Sum(x => x.PercentOfSource));
+                }
+
+                if (!source.Any())
+                {
+                    if (this.PostDone() != ProjectStatusEnum.Done)
                     {
-                        return;
+                        Thread.Sleep(this.SleepTime);
                     }
-
-                    this.Status = ProjectStatusEnum.InProgress;
-                    AsyncOpStartDttm = DateTime.Now;
-
-                    ConvertPiecesActionHandler convertPiecesAction = WriteAsync;
-                    convertPiecesAction.BeginInvoke(
-                        null,
-                        null);
-
-                    this.PostStart();
-                }
-                catch (Exception exception)
-                {
-                    this.PostError(exception);
-                }
-            }
-        }
-
-
-        private readonly object convertAsyncDummy = new object();
-        protected void WriteAsync()
-        {
-            try
-            {
-                lock (convertAsyncDummy)
-                {
-                    
-                    while (this.Status == ProjectStatusEnum.InProgress)
+                    else
                     {
-                        var source = this.ReadFromSources(5);
-                        if (source.Any())
-                        {
-                            this.outputFile.AddPiece(source);
-                            this.ReportProgress(source.Values.Sum(x => x.PercentOfSource), new object());
-                        }
-
-                        if (!source.Any())
-                        {
-                            if (this.PostDone() != ProjectStatusEnum.Done)
-                            {
-                                Thread.Sleep(100);
-                            }
-                        }
+                        this.outputFile.Dispose();
+                        this.outputFile = null;
                     }
                 }
-            }
-            catch (Exception exception)
-            {
-                this.PostError(exception);
             }
         }
 
@@ -134,7 +104,20 @@ namespace SkillsTest.GZipTest.Core
 
             if (result == ProjectStatusEnum.Done)
             {
-                this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(null, false, new object()));
+                this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(null, this.Status == ProjectStatusEnum.Canceled, Thread.CurrentThread));
+            }
+
+            return result;
+        }
+
+
+        protected override ProjectStatusEnum PostCancel()
+        {
+            var result = base.PostCancel();
+
+            if (result == ProjectStatusEnum.Canceled)
+            {
+                this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(null, this.Status == ProjectStatusEnum.Canceled, Thread.CurrentThread));
             }
 
             return result;
@@ -145,7 +128,7 @@ namespace SkillsTest.GZipTest.Core
         {
             var result = base.PostError(exception);
 
-            this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(result, false, new object()));
+            this.OnConvertAsyncCompleted(new AsyncCompletedEventArgs(result, this.Status == ProjectStatusEnum.Canceled, Thread.CurrentThread));
 
             return result;
         }
@@ -190,15 +173,26 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         /// <param name="incProgress">Значение на которое будет увеличено свойство</param>
         /// <param name="state">Идентификатор потока в котором была обработана порция данных</param>
-        protected virtual void ReportProgress(decimal incProgress, object state)
+        protected virtual void ReportProgress(decimal incProgress)
         {
             bool changed = false;
             var tmpPerc = IncPersentCompleted(incProgress, out changed);
 
             if (changed)
             {
-                OnProgressChanged(new ConvertProgressChangedEventArgs(tmpPerc, state, this.AsyncOpStartDttm));
+                OnProgressChanged(new ConvertProgressChangedEventArgs(tmpPerc, Thread.CurrentThread.ManagedThreadId, this.AsyncOpStartDttm));
             }
+        }
+
+
+        public override void AddTarget(MrAbstractBlock value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void RemoveTarget(MrAbstractBlock value)
+        {
+            throw new NotSupportedException();
         }
     }
 }
