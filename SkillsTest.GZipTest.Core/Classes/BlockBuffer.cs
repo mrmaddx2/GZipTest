@@ -11,7 +11,7 @@ namespace SkillsTest.GZipTest.Core.Classes
     /// <remarks>
     /// Представляет из себя обертку для коллекции фрагментов инофрмации.
     /// </remarks>
-    public class BlockBuffer
+    public sealed class BlockBuffer
     {
         public readonly object SyncRoot = new object();
         private SortedList<long, PieceOf> buffer = new SortedList<long, PieceOf>();
@@ -27,10 +27,30 @@ namespace SkillsTest.GZipTest.Core.Classes
             }
         }
 
+        private readonly object bufferSizeDummy = new object();
+        private ulong bufferSize;
+
         /// <summary>
         /// Общее кол-во информации в буфере. В Kb
         /// </summary>
-        public ulong BufferSize { get; private set; }
+        public ulong BufferSize
+        {
+            get
+            {
+                lock (bufferSizeDummy)
+                {
+                    return this.bufferSize;
+                }
+
+            }
+            private set
+            {
+                lock (bufferSizeDummy)
+                {
+                    this.bufferSize = value;
+                }
+            }
+        }
 
         /// <summary>
         /// Функция предназначена для того, чтобы фрагменты в коллекции распологались в обратном порядке.
@@ -47,8 +67,9 @@ namespace SkillsTest.GZipTest.Core.Classes
             lock (this.SyncRoot)
             {
                 this.buffer.Add(this.GetKey(value), value);
-                this.BufferSize += value.Length();
             }
+
+            this.BufferSize += value.Length();
         }
 
         public SortedList<long, PieceOf> BufferPieces 
@@ -78,38 +99,28 @@ namespace SkillsTest.GZipTest.Core.Classes
                     throw new ArgumentOutOfRangeException("count", "Значение должно быть положительным числом");
                 }
 
-                List<PieceOf> result = null;
+                List<PieceOf> result = new List<PieceOf>();
 
                 lock (this.SyncRoot)
                 {
-                    //TODO: переделать
-                    result = new List<PieceOf>(this.buffer.OrderByDescending(x => x.Key).Select(x => x.Value).Take(count).ToList());
-
-                    /*
-
                     int lastIndex = this.buffer.Count - 1;
-                    int firstIndex = lastIndex - count;
+                    int firstIndex = lastIndex - (count - 1);
 
                     if (firstIndex < 0)
                     {
                         firstIndex = 0;
                     }
 
-                    for (int i = lastIndex; i > firstIndex; i--)
+                    for (int i = lastIndex; i >= firstIndex; i--)
                     {
                         result.Add(this.buffer.Values[i]);
                         this.buffer.RemoveAt(i);
-                    }*/
-
-                    foreach (var current in result)
-                    {
-                        this.buffer.Remove(this.GetKey(current));
                     }
+                }
 
-                    if (result.Any())
-                    {
-                        this.BufferSize -= (ulong)result.Sum(x => (long)x.Length());
-                    }
+                if (result.Any())
+                {
+                    this.BufferSize -= (ulong)result.Sum(x => (long)x.Length());
                 }
 
                 return result;

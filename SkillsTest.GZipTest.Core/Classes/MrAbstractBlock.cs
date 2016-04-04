@@ -129,7 +129,7 @@ namespace SkillsTest.GZipTest.Core
         /// Корректировка производительности.
         /// Если блоку предписано изменить интенсивность работы
         /// </summary>
-        protected void ExecPerformanceCorrector()
+        protected virtual void ExecPerformanceCorrector()
         {
             if (this.PerformanceCorrector != null)
             {

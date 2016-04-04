@@ -45,7 +45,10 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
-        public override ProjectFileTypeEnum FileType { get; protected set; }
+        /// <summary>
+        /// Тип файла
+        /// </summary>
+        public readonly ProjectFileTypeEnum FileType;
 
         /// <summary>
         /// Служит для получения очередного необработанного фрагмента файла-источника.
@@ -166,8 +169,6 @@ namespace SkillsTest.GZipTest.Core
                             result.ResetBody(tmpMemStream);
                             tmpMemStream.Close();
                         }
-
-                        
                     }
 
                     this.Body.Flush();

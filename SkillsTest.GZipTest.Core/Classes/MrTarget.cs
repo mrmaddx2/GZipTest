@@ -54,6 +54,12 @@ namespace SkillsTest.GZipTest.Core
             }
         }
 
+
+        protected override void ExecPerformanceCorrector()
+        {
+            throw new NotSupportedException();
+        }
+
         public MrTarget(string value)
         {
             this.outputFile = new OutputFile(value);
@@ -72,13 +78,8 @@ namespace SkillsTest.GZipTest.Core
                 var source = this.ReadFromSources(cntOfPieces);
                 if (source.Any())
                 {
-                    if (this.PercentCompletedInt >= 85)
-                    {
-                        var a = 1;
-                    }
                     this.outputFile.AddPiece(source);
                     this.ReportProgress(source.Sum(x => x.PercentOfSource));
-                    
                 }
 
                 if (!source.Any())

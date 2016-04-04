@@ -18,6 +18,7 @@ namespace SkillsTest.GZipTest.Core
 
         public MrsDispatcher()
         {
+            this.SleepTime = 500;
             this.Start();
         }
 
@@ -43,8 +44,13 @@ namespace SkillsTest.GZipTest.Core
             {
                 ComputerInfo CI = new ComputerInfo();
                 var currentProc = Process.GetCurrentProcess();
-                var avalMem = Convert.ToDecimal(CI.AvailablePhysicalMemory) /
-                              Convert.ToDecimal(CI.TotalPhysicalMemory) * 100;
+
+                var avalMb = CI.AvailablePhysicalMemory/1024/1024/100*80;
+
+                var totalMb = CI.TotalPhysicalMemory / 1024 / 1024;
+
+                var avalMem = Convert.ToDecimal(avalMb) /
+                              Convert.ToDecimal(totalMb) * 100;
 
                 //Начинаются проблемы
                 if (avalMem < 50)
@@ -62,9 +68,8 @@ namespace SkillsTest.GZipTest.Core
                     var problemSources =
                         controlledReports
                             .Where(
-                                x =>
-                                    x.BufferSize > maxMemoryUsage &&
-                                    !(x.Block is MrConverter && !x.Block.AllSourcesDone))
+                                x => (x.BufferAmount > 0 && x.BufferSizeMb >= avalMb*0.5) &&
+                                    !(x.Block is MrConverter && x.Block.AllSourcesDone))
                             .ToList();
 
                     if (problemSources.Any())

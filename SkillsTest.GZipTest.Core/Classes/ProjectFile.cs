@@ -8,70 +8,52 @@ namespace SkillsTest.GZipTest.Core
 {
     public abstract class ProjectFile : IProjectFile
     {
-        //protected readonly BufferedStream Body;
+        protected readonly BufferedStream Body;
 
         /// <summary>
         /// Поток с телом файла.
         /// Блокируем файл на время существования экземпляра.
         /// </summary>
-        protected FileStream Body { get; set; }
+        private FileStream BodyStream { get; set; }
+        /// <summary>
+        /// Длина потока
+        /// </summary>
+        /// <returns></returns>
         public long Length()
         {
-            return this.Body.Length;
+            return this.BodyStream.Length;
         }
 
         public ProjectFile(string inputFilePath, FileMode mode, FileAccess access, FileShare share)
         {
             this.CurrentSeqNo = 0;
-            this.Body = new FileStream(inputFilePath, mode, access, share);
 
-            //this.Body = new BufferedStream(this.Body);
+            var filePath = Path.GetDirectoryName(inputFilePath);
 
-            
+            if (!Directory.Exists(filePath))
+            {
+                Directory.CreateDirectory(filePath);
+            }
+
+            this.BodyStream = new FileStream(inputFilePath, mode, access, share);
+            this.Body = new BufferedStream(this.BodyStream);
         }
 
-        public abstract ProjectFileTypeEnum FileType { get; protected set; }
-
-        private readonly object currentSeqNoDummy = new object();
-        private long currentSeqNo;
+        /// <summary>
+        /// Порядковый номер находящегося в обработке фрагмента данных
+        /// </summary>
         protected long CurrentSeqNo;
-            /*
-        {
-            get
-            {
-                lock (currentSeqNoDummy)
-                {
-                    return this.currentSeqNo;
-                }
-            }
-            protected set
-            {
-                lock (currentSeqNoDummy)
-                {
-                    this.currentSeqNo = value;
-                }
-            }
-        }*/
 
         public virtual void Dispose()
         {
-            if (this.Body != null)
+            if (this.BodyStream != null)
             {
-                if (this.Body.CanRead || this.Body.CanWrite || this.Body.CanSeek)
+                if (this.BodyStream.CanRead || this.BodyStream.CanWrite || this.BodyStream.CanSeek)
                 {
-                    this.Body.Close();
+                    this.BodyStream.Close();
                 }
-                this.Body.Dispose();
-            }
-
-            if (this.Body != null)
-            {
-                if (this.Body.CanRead || this.Body.CanWrite || this.Body.CanSeek)
-                {
-                    this.Body.Close();
-                }
-                this.Body.Dispose();
-                this.Body = null;
+                this.BodyStream.Dispose();
+                this.BodyStream = null;
             }
         }
     }

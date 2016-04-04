@@ -19,12 +19,6 @@ namespace SkillsTest.GZipTest.Core
         /// </summary>
         protected BlockBuffer Pieces = new BlockBuffer();
 
-        public override ProjectFileTypeEnum FileType
-        {
-            get { return ProjectFileTypeEnum.Unknown;}
-            protected set { }
-        }
-
         public OutputFile(string inputFilePath)
             : base(inputFilePath, FileMode.Create, FileAccess.Write,
                     FileShare.None)
