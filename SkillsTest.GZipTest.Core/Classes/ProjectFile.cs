@@ -8,35 +8,28 @@ namespace SkillsTest.GZipTest.Core
 {
     public abstract class ProjectFile : IProjectFile
     {
-        protected readonly BufferedStream Body;
+        //protected readonly BufferedStream Body;
 
         /// <summary>
         /// Поток с телом файла.
         /// Блокируем файл на время существования экземпляра.
         /// </summary>
-        private FileStream BodyStream { get; set; }
+        protected FileStream Body { get; set; }
         /// <summary>
         /// Длина потока
         /// </summary>
         /// <returns></returns>
         public long Length()
         {
-            return this.BodyStream.Length;
+            return this.Body.Length;
         }
 
         public ProjectFile(string inputFilePath, FileMode mode, FileAccess access, FileShare share)
         {
             this.CurrentSeqNo = 0;
 
-            var filePath = Path.GetDirectoryName(inputFilePath);
-
-            if (!Directory.Exists(filePath))
-            {
-                Directory.CreateDirectory(filePath);
-            }
-
-            this.BodyStream = new FileStream(inputFilePath, mode, access, share);
-            this.Body = new BufferedStream(this.BodyStream);
+            this.Body = new FileStream(inputFilePath, mode, access, share, ProcessInfo.GetClusterSize(inputFilePath));
+            //this.Body = new BufferedStream(this.Body, ProcessInfo.GetClusterSize(inputFilePath));
         }
 
         /// <summary>
@@ -46,14 +39,14 @@ namespace SkillsTest.GZipTest.Core
 
         public virtual void Dispose()
         {
-            if (this.BodyStream != null)
+            if (this.Body != null)
             {
-                if (this.BodyStream.CanRead || this.BodyStream.CanWrite || this.BodyStream.CanSeek)
+                if (this.Body.CanRead || this.Body.CanWrite || this.Body.CanSeek)
                 {
-                    this.BodyStream.Close();
+                    this.Body.Close();
                 }
-                this.BodyStream.Dispose();
-                this.BodyStream = null;
+                this.Body.Dispose();
+                this.Body = null;
             }
         }
     }

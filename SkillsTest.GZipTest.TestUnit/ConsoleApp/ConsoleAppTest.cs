@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SkillsTest.GZipTest.Core;
 
 namespace SkillsTest.GZipTest.TestUnit
 {

@@ -41,21 +41,33 @@ namespace SkillsTest.GZipTest.Core
             {
                 this.Pieces.AddRange(value);
 
-                for (int i = this.Pieces.BufferPieces.Count - 1; i >= 0; i--)
+                using (var tmpMemStream = new MemoryStream())
                 {
-                    var nextPiece = this.Pieces.BufferPieces.Values[i];
-
-                    if (nextPiece.SeqNo != this.CurrentSeqNo)
+                    for (int i = this.Pieces.BufferPieces.Count - 1; i >= 0; i--)
                     {
-                        break;
+                        var nextPiece = this.Pieces.BufferPieces.Values[i];
+
+                        if (nextPiece.SeqNo != this.CurrentSeqNo)
+                        {
+                            break;
+                        }
+
+                        var tmpBodyLength = nextPiece.Length();
+                        tmpMemStream.Write(nextPiece.GetBodyBuffer(true), 0, (int)tmpBodyLength);
+                        this.Pieces.BufferPieces.RemoveAt(i);
+                        Interlocked.Increment(ref this.CurrentSeqNo);
                     }
-                    
-                    var tmpBodyLength = nextPiece.Length();
-                    this.Body.Write(nextPiece.GetBodyBuffer(true), 0, (int)tmpBodyLength);
-                    this.Pieces.BufferPieces.RemoveAt(i);
-                    Interlocked.Increment(ref this.CurrentSeqNo);
+
+                    if (tmpMemStream.Length > 0)
+                    {
+                        this.Body.Write(tmpMemStream.ToArray(), 0, (int)tmpMemStream.Length);
+                        this.Body.Flush();
+                    }
+
+                    tmpMemStream.Close();
                 }
-                this.Body.Flush();
+
+                
             }
         }
     }

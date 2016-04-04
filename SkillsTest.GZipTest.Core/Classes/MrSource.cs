@@ -33,7 +33,10 @@ namespace SkillsTest.GZipTest.Core
         {
             Thread.CurrentThread.Priority = ThreadPriority.Normal;
 
+            
+
             PieceOf newPiece;
+            DateTime? now = null;
             while ((newPiece = this.InputFile.Fetch(inputFragmentSize: null)) != null && this.Status == ProjectStatusEnum.InProgress)
             {
                 this.AddToBuffer((PieceOf)newPiece);

@@ -45,31 +45,28 @@ namespace SkillsTest.GZipTest.Core
                 ComputerInfo CI = new ComputerInfo();
                 var currentProc = Process.GetCurrentProcess();
 
-                var avalMb = CI.AvailablePhysicalMemory/1024/1024/100*80;
+                var avalMb = CI.AvailablePhysicalMemory/1024/1024;
 
-                var totalMb = CI.TotalPhysicalMemory / 1024 / 1024;
+                var totalMb = CI.TotalPhysicalMemory/1024/1024;
 
                 var avalMem = Convert.ToDecimal(avalMb) /
                               Convert.ToDecimal(totalMb) * 100;
 
                 //Начинаются проблемы
-                if (avalMem < 50)
+                if (avalMem < 35)
                 {
                     List<PerformanceReport> controlledReports = null;
                     lock (workersDummy)
                     {
-                        //Соберем отчеты источников
+                        //Соберем отчеты о состоянии блоков конвейера
                         controlledReports = workers.Where(x => x.Status == ProjectStatusEnum.InProgress && (x is MrSource || x is MrConverter)).Select(x => x.GenerateReport()).ToList();
                     }
 
-                    //50 процентов от занятой приложением памяти
-                    var maxMemoryUsage = (ulong)Math.Floor(Convert.ToDouble(currentProc.PrivateMemorySize64) * 0.25);
-
+                    //Проблемными считаем источники в буфере которых находится данных больше чем половина оставшейся свободной оперативки
                     var problemSources =
                         controlledReports
                             .Where(
-                                x => (x.BufferAmount > 0 && x.BufferSizeMb >= avalMb*0.5) &&
-                                    !(x.Block is MrConverter && x.Block.AllSourcesDone))
+                                x => x.BufferSizeMb >= avalMb * 0.5 && x.Block is MrSource)
                             .ToList();
 
                     if (problemSources.Any())
@@ -86,7 +83,8 @@ namespace SkillsTest.GZipTest.Core
                     
                 }
 
-                if (avalMem < 20)
+                //Делать нечего - зовем на помощь сборку мусора
+                if (avalMem <= 15)
                 {
                     GC.Collect();
                 }
