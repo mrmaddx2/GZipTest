@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,12 +13,14 @@ namespace SkillsTest.GZipTest.Core
         /// <summary>
         /// Значение-костыль, являющееся по совместительству магическим числом для gz формата
         /// </summary>
-        protected static readonly byte[] gZipMagicheader = { 31, 139, 08 };
+        protected static byte[] gZipMagicheader = { 31, 139, 08 };
 
         /// <summary>
         /// Значение по умолчанию для размера фрагмента сжимаемых данных. Заполняется в статическом конструкторе
         /// </summary>
         protected static uint DefaultFragmentSize;
+
+        private byte[] prevReadBuffer;
 
         static InputFile()
         {
@@ -109,40 +112,22 @@ namespace SkillsTest.GZipTest.Core
 
                         int matchesCount = 0;
                         var buffer = new byte[fragmentSize];
-                        long nRead;
+                        int nRead;
                         //Позиция начала следующего кусочка. На эту позицию будет установлен поток после заполнения текущего результата
-                        long? positionOfNextPart = null;
-                        //Костыль для предотвращения петли, т.к. начинаем мы читать всегда с магического числа
-                        bool isFirstRead = true;
-
+                        int positionOfNextPart = -1;
                         using (var tmpMemStream = new MemoryStream())
                         {
-                            while (((nRead = Body.Read(buffer, 0, buffer.Length)) > 0) && positionOfNextPart == null)
+                            while (((nRead = Body.Read(buffer, 0, buffer.Length)) > 0) && positionOfNextPart == -1)
                             {
-                                long tmpIndex;
-                                for (tmpIndex = 0; tmpIndex <= nRead - 1; tmpIndex++)
-                                {
-                                    if (buffer[tmpIndex] == gZipMagicheader[matchesCount] && !isFirstRead)
-                                    {
-                                        matchesCount++;
-                                    }
-                                    else
-                                    {
-                                        matchesCount = 0;
-                                    }
+                                positionOfNextPart = FindMatches(ref buffer, ref gZipMagicheader, ref matchesCount, 0, nRead - 1, false);
 
-                                    if (matchesCount == gZipMagicheader.Length)
-                                    {
-                                        positionOfNextPart = this.Body.Position - (nRead - 1) + tmpIndex -
-                                                             gZipMagicheader.Length;
-                                        break;
-                                    }
-                                    isFirstRead = false;
+                                if (positionOfNextPart >= 0)
+                                {
+                                    matchesCount = 0;
                                 }
 
-
                                 tmpMemStream.Write(buffer, 0,
-                                    (int) (positionOfNextPart == null ? nRead : (tmpIndex + 1) - gZipMagicheader.Length));
+                                    positionOfNextPart == -1 ? nRead : positionOfNextPart);
                             }
 
                             result.ResetBody(tmpMemStream);
@@ -150,9 +135,9 @@ namespace SkillsTest.GZipTest.Core
                         }
                         
 
-                        if (positionOfNextPart != null)
+                        if (positionOfNextPart != -1)
                         {
-                            this.Body.Position = (long)positionOfNextPart;
+                            this.Body.Position = positionOfNextPart;
                         }
                     }
                     else
@@ -195,6 +180,39 @@ namespace SkillsTest.GZipTest.Core
                     return null;
                 }
             }
+        }
+
+
+        private int FindMatches(ref byte[] where, ref byte[] what, ref int matchesCount, int startIndex = 0, int endIndex = 0, bool ignoreFirstMatch = false)
+        {
+            //Найдем индекс первой позиции совпадения
+            int currentIndex = startIndex - 1;
+            var whereLength = where.Length;
+            var whatLength = what.Length;
+
+            if (endIndex == 0)
+            {
+                endIndex = whereLength;
+            }
+
+            while ((currentIndex = Array.IndexOf(where, what[matchesCount], currentIndex + 1, (ignoreFirstMatch ? 2 : 1))) >= 0)
+            {
+                matchesCount++;
+                ignoreFirstMatch = false;
+                if (currentIndex >= endIndex || matchesCount >= whatLength)
+                {
+                    break;
+                }
+            }
+
+            if (matchesCount == whatLength || whereLength == currentIndex)
+            {
+                return currentIndex - matchesCount;
+            }
+
+            matchesCount = 0;
+
+            return -1;
         }
     }
 }
